@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+import json
+
+import msgspec
+import pytest
+
+from quater import App, Request
+
+
+class CreateUser(msgspec.Struct):
+    name: str
+    age: int
+
+
+async def mcp_call(
+    app: App,
+    *,
+    name: str,
+    arguments: dict[str, object],
+    request_id: int = 1,
+) -> tuple[int, dict[str, object]]:
+    response = await app.handle(
+        Request(
+            method="POST",
+            path="/mcp",
+            headers={"content-type": "application/json"},
+            body=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": arguments},
+                }
+            ).encode("utf-8"),
+        )
+    )
+    return response.status_code, json.loads(response.body)
+
+
+def require_object(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return value
+
+
+def require_object_list(value: object) -> list[dict[str, object]]:
+    assert isinstance(value, list)
+    assert all(isinstance(item, dict) for item in value)
+    return value
+
+
+@pytest.mark.asyncio
+async def test_tools_call_invokes_handler_with_tool_request_context() -> None:
+    app = App(mcp_enabled=True)
+
+    @app.get("/users/{id:int}", tool=True)
+    async def get_user(id: int, request: Request) -> dict[str, object]:
+        assert request.context.source == "tool"
+        assert request.context.tool_name == "get_user"
+        return {"id": id, "source": request.context.source}
+
+    status, body = await mcp_call(app, name="get_user", arguments={"id": 7})
+
+    assert status == 200
+    assert body["result"] == {
+        "content": [
+            {"type": "text", "text": '{"id":7,"source":"tool"}'},
+        ],
+        "isError": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_normal_api_call_keeps_api_request_context() -> None:
+    app = App(mcp_enabled=True)
+
+    @app.get("/users/{id:int}", tool=True)
+    async def get_user(id: int, request: Request) -> dict[str, object]:
+        return {"id": id, "source": request.context.source}
+
+    response = await app.handle(Request(method="GET", path="/users/7"))
+
+    assert response.body == b'{"id":7,"source":"api"}'
+
+
+@pytest.mark.asyncio
+async def test_tools_call_binds_body_model_from_arguments() -> None:
+    app = App(mcp_enabled=True)
+
+    @app.post("/users", tool=True)
+    async def create_user(user: CreateUser) -> dict[str, object]:
+        return {"name": user.name, "age": user.age}
+
+    status, body = await mcp_call(
+        app,
+        name="create_user",
+        arguments={"user": {"name": "Ada", "age": 37}},
+    )
+
+    assert status == 200
+    result = require_object(body["result"])
+    content = require_object_list(result["content"])
+    assert content[0]["text"] == '{"name":"Ada","age":37}'
+    assert result["isError"] is False
+
+
+@pytest.mark.asyncio
+async def test_unknown_tool_returns_json_rpc_error() -> None:
+    status, body = await mcp_call(
+        App(mcp_enabled=True),
+        name="missing",
+        arguments={},
+    )
+
+    assert status == 200
+    assert body["error"] == {"code": -32602, "message": "Unknown tool"}
+
+
+@pytest.mark.asyncio
+async def test_invalid_tool_arguments_do_not_call_handler() -> None:
+    app = App(mcp_enabled=True)
+    calls = 0
+
+    @app.get("/users/{id:int}", tool=True)
+    async def get_user(id: int) -> dict[str, int]:
+        nonlocal calls
+        calls += 1
+        return {"id": id}
+
+    status, body = await mcp_call(app, name="get_user", arguments={"id": "broken"})
+
+    assert status == 200
+    assert body["error"] == {"code": -32602, "message": "Invalid path argument: id"}
+    assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_handler_error_becomes_tool_result_error() -> None:
+    app = App(mcp_enabled=True)
+
+    @app.get("/boom", tool=True)
+    async def boom() -> dict[str, bool]:
+        raise RuntimeError("database token leaked")
+
+    status, body = await mcp_call(app, name="boom", arguments={})
+
+    assert status == 200
+    assert body["result"] == {
+        "content": [{"type": "text", "text": "Tool call failed"}],
+        "isError": True,
+    }

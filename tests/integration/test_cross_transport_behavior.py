@@ -1,0 +1,237 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from inspect import isawaitable
+from io import BytesIO
+from typing import Any, cast
+
+import pytest
+
+from quater import App, Request
+from quater.adapters.asgi import ASGIMessage
+from quater.adapters.wsgi import WSGIEnvironment
+from quater.typing import AuthContext, AuthRequest
+
+
+class RSGIHeaders:
+    def __init__(self, headers: list[tuple[str, str]]) -> None:
+        self._headers = headers
+
+    def items(self) -> list[tuple[str, str]]:
+        return list(self._headers)
+
+
+class RSGIScope:
+    proto: str = "http"
+    query_string: str = ""
+    scheme: str = "http"
+    client: str = "127.0.0.1:5000"
+    authority: str | None = None
+
+    def __init__(
+        self,
+        *,
+        method: str,
+        path: str,
+        headers: list[tuple[str, str]],
+    ) -> None:
+        self.method = method
+        self.path = path
+        self.headers = RSGIHeaders(headers)
+
+
+class RSGIProtocol:
+    def __init__(self) -> None:
+        self.status: int | None = None
+        self.headers: list[tuple[str, str]] = []
+        self.body = b""
+
+    async def __call__(self) -> bytes:
+        return b""
+
+    def response_empty(self, status: int, headers: list[tuple[str, str]]) -> None:
+        self.status = status
+        self.headers = headers
+
+    def response_bytes(
+        self,
+        status: int,
+        headers: list[tuple[str, str]],
+        body: bytes,
+    ) -> None:
+        self.status = status
+        self.headers = headers
+        self.body = body
+
+    def response_stream(
+        self,
+        status: int,
+        headers: list[tuple[str, str]],
+    ) -> RSGIStreamTransport:
+        raise AssertionError("unexpected streaming response")
+
+
+class RSGIStreamTransport:
+    async def send_bytes(self, data: bytes) -> None:
+        raise AssertionError("unexpected streaming response")
+
+
+async def asgi_response(
+    app: App,
+    *,
+    host: str,
+    authorization: str,
+) -> tuple[int, dict[str, str], bytes]:
+    sent: list[dict[str, object]] = []
+
+    async def receive() -> ASGIMessage:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: Mapping[str, Any]) -> None:
+        sent.append(dict(message))
+
+    await app.asgi(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/me",
+            "scheme": "http",
+            "query_string": b"",
+            "headers": [
+                (b"host", host.encode("latin-1")),
+                (b"authorization", authorization.encode("latin-1")),
+            ],
+            "client": ("127.0.0.1", 5000),
+        },
+        receive,
+        send,
+    )
+    start = next(
+        message for message in sent if message["type"] == "http.response.start"
+    )
+    headers = {
+        name.decode("latin-1"): value.decode("latin-1")
+        for name, value in cast(list[tuple[bytes, bytes]], start["headers"])
+    }
+    body = b"".join(
+        cast(bytes, message.get("body", b""))
+        for message in sent
+        if message["type"] == "http.response.body"
+    )
+    return cast(int, start["status"]), headers, body
+
+
+def wsgi_response(
+    app: App,
+    *,
+    host: str,
+    authorization: str,
+) -> tuple[int, dict[str, str], bytes]:
+    captured: dict[str, object] = {}
+
+    def start_response(
+        status: str,
+        headers: list[tuple[str, str]],
+        exc_info: object | None = None,
+    ) -> object:
+        captured["status"] = status
+        captured["headers"] = headers
+        return None
+
+    environ: WSGIEnvironment = {
+        "REQUEST_METHOD": "GET",
+        "PATH_INFO": "/me",
+        "QUERY_STRING": "",
+        "SERVER_NAME": "internal",
+        "SERVER_PORT": "80",
+        "SERVER_PROTOCOL": "HTTP/1.1",
+        "HTTP_HOST": host,
+        "HTTP_AUTHORIZATION": authorization,
+        "wsgi.input": BytesIO(b""),
+        "wsgi.url_scheme": "http",
+        "REMOTE_ADDR": "127.0.0.1",
+    }
+    body = b"".join(app.wsgi(environ, start_response))
+    status_code = int(str(captured["status"]).split(" ", 1)[0])
+    headers = cast(list[tuple[str, str]], captured["headers"])
+    return status_code, dict(headers), body
+
+
+async def rsgi_response(
+    app: App,
+    *,
+    host: str,
+    authorization: str,
+) -> tuple[int, dict[str, str], bytes]:
+    protocol = RSGIProtocol()
+    result = app.rsgi(
+        RSGIScope(
+            method="GET",
+            path="/me",
+            headers=[("host", host), ("authorization", authorization)],
+        ),
+        protocol,
+    )
+    assert isawaitable(result)
+    await result
+    assert protocol.status is not None
+    return protocol.status, dict(protocol.headers), protocol.body
+
+
+def make_app(auth_subjects: list[str], handler_calls: list[str]) -> App:
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        subject = ctx.headers.get("authorization")
+        if subject is None:
+            return None
+        auth_subjects.append(subject)
+        return AuthContext(subject=subject)
+
+    app = App(auth=authenticate, allowed_hosts=["api.example.com"])
+
+    @app.get("/me")
+    async def me(request: Request) -> dict[str, str]:
+        assert request.auth is not None
+        handler_calls.append(request.auth.subject)
+        return {"subject": request.auth.subject}
+
+    return app
+
+
+@pytest.mark.asyncio
+async def test_http_adapters_share_security_auth_and_dispatch_behavior() -> None:
+    auth_subjects: list[str] = []
+    handler_calls: list[str] = []
+    app = make_app(auth_subjects, handler_calls)
+
+    responses = [
+        await asgi_response(app, host="api.example.com", authorization="user_1"),
+        wsgi_response(app, host="api.example.com", authorization="user_1"),
+        await rsgi_response(app, host="api.example.com", authorization="user_1"),
+    ]
+
+    for status, headers, body in responses:
+        assert status == 200
+        assert body == b'{"subject":"user_1"}'
+        assert headers["x-content-type-options"] == "nosniff"
+    assert auth_subjects == ["user_1", "user_1", "user_1"]
+    assert handler_calls == ["user_1", "user_1", "user_1"]
+
+
+@pytest.mark.asyncio
+async def test_allowed_host_rejection_is_transport_independent() -> None:
+    auth_subjects: list[str] = []
+    handler_calls: list[str] = []
+    app = make_app(auth_subjects, handler_calls)
+
+    responses = [
+        await asgi_response(app, host="evil.example.com", authorization="user_1"),
+        wsgi_response(app, host="evil.example.com", authorization="user_1"),
+        await rsgi_response(app, host="evil.example.com", authorization="user_1"),
+    ]
+
+    for status, headers, body in responses:
+        assert status == 400
+        assert body == b"Invalid Host header"
+        assert headers["x-content-type-options"] == "nosniff"
+    assert auth_subjects == []
+    assert handler_calls == []
