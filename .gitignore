@@ -23,3 +23,5 @@ venv/
 .env.*
 notes/
 sample_projects
+target/
+src/quater/*.so

@@ -31,10 +31,11 @@ import quater
 print(json.dumps({
     "file": quater.__file__,
     "has_quater": hasattr(quater, "Quater"),
-    "has_app": hasattr(quater, "App"),
-    "granian_eager": "granian" in sys.modules,
-    "msgspec_eager": "msgspec" in sys.modules,
-}))
+        "has_app": hasattr(quater, "App"),
+        "granian_eager": "granian" in sys.modules,
+        "msgspec_eager": "msgspec" in sys.modules,
+        "router_eager": "quater._router" in sys.modules,
+    }))
 """
     result = subprocess.run(
         [sys.executable, "-c", script, str(tmp_path)],
@@ -50,6 +51,7 @@ print(json.dumps({
     assert pathlib.Path(payload["file"]).is_relative_to(src_path)
     assert payload["granian_eager"] is False
     assert payload["msgspec_eager"] is False
+    assert payload["router_eager"] is False
 
 
 def test_public_exports_are_intentionally_small() -> None:

@@ -1,0 +1,15 @@
+[package]
+name = "router"
+version = "0.1.0"
+edition = "2021"
+description = "Native route matcher for Quater."
+license = "MIT"
+
+[lib]
+name = "quater_router"
+path = "native/router/src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+matchit = "0.9.1"
+pyo3 = { version = "0.27.0", features = ["abi3-py311", "extension-module"] }

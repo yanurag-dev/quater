@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, cast
 
 from quater.core import RouteDefinition
 from quater.exceptions import RouteConflictError
@@ -16,8 +17,12 @@ from quater.routing import (
     RoutePattern,
     StaticSegment,
     parse_route_pattern,
-    split_request_path,
 )
+
+if TYPE_CHECKING:
+    from quater._router import RouteMatcher
+
+_EMPTY_PATH_PARAMS: Mapping[str, object] = {}
 
 
 @dataclass(slots=True, frozen=True)
@@ -30,32 +35,25 @@ class CompiledRoute:
     async def dispatch(
         self,
         request: Request,
-        path_params: dict[str, object],
+        path_params: Mapping[str, object],
     ) -> Response:
         return await self.pipeline(request, path_params)
-
-
-@dataclass(slots=True)
-class RouterNode:
-    static_children: dict[str, RouterNode] = field(default_factory=dict)
-    param_child: tuple[ParamSegment, RouterNode] | None = None
-    routes: dict[str, CompiledRoute] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
 class Match:
     route: CompiledRoute | None
-    path_params: dict[str, object]
+    path_params: Mapping[str, object]
     allowed_methods: frozenset[str]
 
 
 class Router:
     """Compiled route matcher and dispatcher."""
 
-    __slots__ = ("_fallback_pipeline", "_root")
+    __slots__ = ("_fallback_pipeline", "_matcher")
 
     def __init__(self) -> None:
-        self._root = RouterNode()
+        self._matcher = _new_route_matcher()
         self._fallback_pipeline = compile_middleware_pipeline(
             self._fallback_endpoint,
             global_stack=MiddlewareStack(),
@@ -79,22 +77,60 @@ class Router:
             route_stack=MiddlewareStack(),
             debug=debug,
         )
-        seen_shapes: dict[tuple[str, tuple[tuple[str, str], ...]], str] = {}
+        method_shapes: dict[tuple[str, tuple[tuple[str, str], ...]], str] = {}
+        signatures: dict[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = {}
+        allowed_paths: dict[tuple[tuple[str, str], ...], RoutePattern] = {}
+        allowed_methods: dict[tuple[tuple[str, str], ...], set[str]] = {}
+
         for route in routes:
             pattern = parse_route_pattern(route.path)
-            shape_key = (route.method, pattern.shape)
-            if shape_key in seen_shapes:
+            route_shape = _route_shape(pattern)
+            method_key = (route.method, route_shape)
+            if method_key in method_shapes:
                 raise RouteConflictError(
                     f"Route {route.method} {route.path!r} conflicts with "
-                    f"{seen_shapes[shape_key]!r}"
+                    f"{method_shapes[method_key]!r}"
                 )
-            seen_shapes[shape_key] = route.path
-            router._insert(
+            method_shapes[method_key] = route.path
+
+            signature = _param_signature(pattern)
+            existing_signature = signatures.get(route_shape)
+            if existing_signature is not None and existing_signature != signature:
+                raise RouteConflictError(
+                    "Dynamic routes at the same position must use the same name "
+                    "and converter"
+                )
+            signatures[route_shape] = signature
+            allowed_paths.setdefault(route_shape, pattern)
+            allowed_methods.setdefault(route_shape, set()).add(route.method)
+
+            compiled_route = router._compile_route(
                 route,
                 pattern,
                 global_middleware=global_middleware,
                 debug=debug,
             )
+
+            try:
+                router._matcher.insert_route(
+                    route.method,
+                    _native_path(pattern),
+                    compiled_route,
+                    _param_specs(pattern),
+                )
+            except ValueError as exc:
+                raise RouteConflictError(str(exc)) from exc
+
+        for route_shape, pattern in allowed_paths.items():
+            try:
+                router._matcher.insert_allowed(
+                    _native_path(pattern),
+                    sorted(allowed_methods[route_shape]),
+                    _param_specs(pattern),
+                )
+            except ValueError as exc:
+                raise RouteConflictError(str(exc)) from exc
+
         return router
 
     async def dispatch(self, request: Request) -> Response:
@@ -103,7 +139,7 @@ class Router:
 
     async def dispatch_match(self, request: Request, match: Match) -> Response:
         if match.route is None:
-            return await self._fallback_pipeline(request, {})
+            return await self._fallback_pipeline(request, _EMPTY_PATH_PARAMS)
 
         return await match.route.dispatch(request, match.path_params)
 
@@ -123,59 +159,28 @@ class Router:
         return TextResponse(f"Not found: {request.path}", status_code=404)
 
     def match(self, method: str, path: str) -> Match:
-        node = self._root
-        path_params: dict[str, object] = {}
+        route_match = self._matcher.match_route(method.upper(), path)
+        if route_match is not None:
+            route, path_params = route_match
+            return Match(
+                cast(CompiledRoute, route),
+                _EMPTY_PATH_PARAMS if path_params is None else path_params,
+                frozenset(),
+            )
 
-        for segment in split_request_path(path):
-            static_child = node.static_children.get(segment)
-            if static_child is not None:
-                node = static_child
-                continue
+        allowed_methods = self._matcher.allowed_methods(path)
+        if allowed_methods is not None:
+            return Match(None, _EMPTY_PATH_PARAMS, frozenset(allowed_methods))
+        return Match(None, _EMPTY_PATH_PARAMS, frozenset())
 
-            if node.param_child is None:
-                return Match(None, {}, frozenset())
-
-            param, child = node.param_child
-            try:
-                path_params[param.name] = param.converter(segment)
-            except ValueError:
-                return Match(None, {}, frozenset())
-            node = child
-
-        route = node.routes.get(method.upper())
-        return Match(route, path_params, frozenset(node.routes))
-
-    def _insert(
+    def _compile_route(
         self,
         route: RouteDefinition,
         pattern: RoutePattern,
         *,
         global_middleware: MiddlewareStack,
         debug: bool,
-    ) -> None:
-        node = self._root
-        for segment in pattern.segments:
-            if isinstance(segment, StaticSegment):
-                node = node.static_children.setdefault(segment.value, RouterNode())
-                continue
-
-            if node.param_child is None:
-                node.param_child = (segment, RouterNode())
-            else:
-                existing, _ = node.param_child
-                if (
-                    existing.converter_name != segment.converter_name
-                    or existing.name != segment.name
-                ):
-                    raise RouteConflictError(
-                        "Dynamic routes at the same position must use the same name "
-                        "and converter"
-                    )
-            node = node.param_child[1]
-
-        if route.method in node.routes:
-            raise RouteConflictError(f"Duplicate route: {route.method} {route.path}")
-
+    ) -> CompiledRoute:
         handler_plan = build_handler_plan(
             route.handler,
             path_param_names=pattern.param_names,
@@ -188,7 +193,7 @@ class Router:
             result = await handler_plan.call(request, path_params)
             return normalize_response(result)
 
-        node.routes[route.method] = CompiledRoute(
+        return CompiledRoute(
             definition=route,
             pattern=pattern,
             handler_plan=handler_plan,
@@ -199,3 +204,52 @@ class Router:
                 debug=debug,
             ),
         )
+
+
+def _new_route_matcher() -> RouteMatcher:
+    from quater._router import RouteMatcher
+
+    return RouteMatcher()
+
+
+def _native_path(pattern: RoutePattern) -> str:
+    if not pattern.segments:
+        return "/"
+
+    parts: list[str] = []
+    for segment in pattern.segments:
+        if isinstance(segment, StaticSegment):
+            parts.append(_native_static_segment(segment.value))
+        else:
+            parts.append(f"{{{segment.name}}}")
+    return "/" + "/".join(parts)
+
+
+def _native_static_segment(value: str) -> str:
+    return value.replace("{", "{{").replace("}", "}}")
+
+
+def _route_shape(pattern: RoutePattern) -> tuple[tuple[str, str], ...]:
+    parts: list[tuple[str, str]] = []
+    for segment in pattern.segments:
+        if isinstance(segment, StaticSegment):
+            parts.append(("static", segment.value))
+        else:
+            parts.append(("param", ""))
+    return tuple(parts)
+
+
+def _param_signature(pattern: RoutePattern) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (segment.name, segment.converter_name)
+        for segment in pattern.segments
+        if isinstance(segment, ParamSegment)
+    )
+
+
+def _param_specs(pattern: RoutePattern) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        (segment.name, segment.converter_name)
+        for segment in pattern.segments
+        if isinstance(segment, ParamSegment)
+    )

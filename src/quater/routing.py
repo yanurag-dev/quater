@@ -62,10 +62,6 @@ def parse_route_pattern(path: str) -> RoutePattern:
     )
 
 
-def split_request_path(path: str) -> tuple[str, ...]:
-    return _split_path(path)
-
-
 def _split_path(path: str) -> tuple[str, ...]:
     if path == "/":
         return ()
