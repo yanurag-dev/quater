@@ -23,7 +23,12 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
-@app.get("/users/{id:int}", tool=True, auth=authenticate)
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one user.",
+)
 async def get_user(id: int, request: Request) -> dict[str, object]:
     assert_type(id, int)
     assert_type(request.context.source, Literal["api", "tool"])

@@ -29,9 +29,14 @@ from quater.security import (
     prepare_request_security,
     resolve_request_security_context,
 )
+from quater.tools.descriptions import (
+    normalize_route_description,
+    resolve_tool_description,
+)
 from quater.typing import Authenticate, LifespanHook
 
 HandlerT = TypeVar("HandlerT", bound=Handler)
+
 
 if TYPE_CHECKING:
     from quater.adapters.asgi import ASGIAdapter, ASGIReceive, ASGIScope, ASGISend
@@ -205,6 +210,7 @@ class Quater:
         handler: Handler,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -221,12 +227,18 @@ class Quater:
             route_name = (
                 discovered_name if isinstance(discovered_name, str) else "anonymous"
             )
+        route_description = (
+            resolve_tool_description(route_name, description, handler)
+            if tool
+            else normalize_route_description(description)
+        )
 
         route = RouteDefinition(
             method=method.upper(),
             path=path,
             handler=handler,
             name=route_name,
+            description=route_description,
             tool=tool,
             auth=auth,
             metadata=dict(metadata or {}),
@@ -248,6 +260,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -264,6 +277,7 @@ class Quater:
                 path,
                 handler,
                 name=name,
+                description=description,
                 tool=tool,
                 auth=auth,
                 metadata=metadata,
@@ -281,6 +295,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -293,6 +308,7 @@ class Quater:
             "GET",
             path,
             name=name,
+            description=description,
             tool=tool,
             auth=auth,
             metadata=metadata,
@@ -307,6 +323,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -319,6 +336,7 @@ class Quater:
             "POST",
             path,
             name=name,
+            description=description,
             tool=tool,
             auth=auth,
             metadata=metadata,
@@ -333,6 +351,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -345,6 +364,7 @@ class Quater:
             "PUT",
             path,
             name=name,
+            description=description,
             tool=tool,
             auth=auth,
             metadata=metadata,
@@ -359,6 +379,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -371,6 +392,7 @@ class Quater:
             "PATCH",
             path,
             name=name,
+            description=description,
             tool=tool,
             auth=auth,
             metadata=metadata,
@@ -385,6 +407,7 @@ class Quater:
         path: str,
         *,
         name: str | None = None,
+        description: str | None = None,
         tool: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
@@ -397,6 +420,7 @@ class Quater:
             "DELETE",
             path,
             name=name,
+            description=description,
             tool=tool,
             auth=auth,
             metadata=metadata,

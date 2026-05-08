@@ -55,7 +55,7 @@ def require_object_list(value: object) -> list[dict[str, object]]:
 async def test_tools_call_invokes_handler_with_tool_request_context() -> None:
     app = Quater(mcp_enabled=True)
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int, request: Request) -> dict[str, object]:
         assert request.context.source == "tool"
         assert request.context.tool_name == "get_user"
@@ -87,7 +87,7 @@ async def test_tools_call_reuses_cached_json_rpc_payload(
 
     monkeypatch.setattr(msgspec.json, "decode", decode_json)
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int) -> dict[str, object]:
         return {"id": id}
 
@@ -103,7 +103,7 @@ async def test_tools_call_reuses_cached_json_rpc_payload(
 async def test_normal_api_call_keeps_api_request_context() -> None:
     app = Quater(mcp_enabled=True)
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int, request: Request) -> dict[str, object]:
         return {"id": id, "source": request.context.source}
 
@@ -116,7 +116,7 @@ async def test_normal_api_call_keeps_api_request_context() -> None:
 async def test_tools_call_escapes_rendered_request_path_parameters() -> None:
     app = Quater(mcp_enabled=True)
 
-    @app.get("/files/{name}", tool=True)
+    @app.get("/files/{name}", tool=True, description="Fetch one file.")
     async def get_file(name: str, request: Request) -> dict[str, str]:
         return {"name": name, "path": request.path}
 
@@ -140,7 +140,7 @@ async def test_tools_call_escapes_rendered_request_path_parameters() -> None:
 async def test_tools_call_binds_body_model_from_arguments() -> None:
     app = Quater(mcp_enabled=True)
 
-    @app.post("/users", tool=True)
+    @app.post("/users", tool=True, description="Create one user.")
     async def create_user(user: CreateUser) -> dict[str, object]:
         return {"name": user.name, "age": user.age}
 
@@ -174,7 +174,7 @@ async def test_invalid_tool_arguments_do_not_call_handler() -> None:
     app = Quater(mcp_enabled=True)
     calls = 0
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int) -> dict[str, int]:
         nonlocal calls
         calls += 1
@@ -191,7 +191,7 @@ async def test_invalid_tool_arguments_do_not_call_handler() -> None:
 async def test_handler_error_becomes_tool_result_error() -> None:
     app = Quater(mcp_enabled=True)
 
-    @app.get("/boom", tool=True)
+    @app.get("/boom", tool=True, description="Raise a handler error.")
     async def boom() -> dict[str, bool]:
         raise RuntimeError("database token leaked")
 

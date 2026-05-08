@@ -108,10 +108,17 @@ uv run granian examples.basic_app:app --interface rsgi --access-log
 ## MCP Tools
 
 Routes are normal APIs by default. A route becomes visible to MCP only when
-registered with `tool=True`.
+registered with `tool=True`. Tool routes must define a description, either with
+`description=` or a handler docstring, so `tools/list` gives agents useful
+intent metadata.
 
 ```python
-@app.get("/users/{id:int}", tool=True, auth=authenticate)
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one user by id.",
+)
 async def get_user(id: int, request: Request) -> dict[str, object]:
     return {
         "id": id,

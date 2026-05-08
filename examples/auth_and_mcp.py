@@ -34,7 +34,12 @@ async def profile(request: Request) -> dict[str, object]:
     }
 
 
-@app.get("/users/{id:int}", tool=True, auth=authenticate)
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one user by id.",
+)
 async def get_user(id: int, request: Request) -> dict[str, object]:
     assert request.auth is not None
     return {

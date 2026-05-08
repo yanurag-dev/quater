@@ -19,7 +19,11 @@ class CancelReason(msgspec.Struct):
 def test_tool_schema_includes_path_query_and_body_parameters() -> None:
     app = Quater()
 
-    @app.post("/orders/{id:int}/cancel", tool=True)
+    @app.post(
+        "/orders/{id:int}/cancel",
+        tool=True,
+        description="Cancel an order.",
+    )
     async def cancel_order(
         id: int,
         dry_run: bool = False,
@@ -49,7 +53,7 @@ def test_tool_schema_includes_path_query_and_body_parameters() -> None:
 def test_tool_list_payload_uses_generated_input_schema() -> None:
     app = Quater()
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int, include_email: bool = False) -> dict[str, object]:
         return {"id": id, "include_email": include_email}
 
@@ -58,6 +62,7 @@ def test_tool_list_payload_uses_generated_input_schema() -> None:
     assert registry.list_tools() == [
         {
             "name": "get_user",
+            "description": "Fetch one user.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

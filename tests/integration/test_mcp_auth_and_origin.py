@@ -26,7 +26,12 @@ async def test_mcp_uses_same_auth_denial_policy_as_http() -> None:
 
     app = Quater(mcp_enabled=True)
 
-    @app.get("/private", tool=True, auth=authenticate)
+    @app.get(
+        "/private",
+        tool=True,
+        auth=authenticate,
+        description="Read private data.",
+    )
     async def private() -> dict[str, bool]:
         return {"ok": True}
 
@@ -48,7 +53,7 @@ async def test_auth_hook_sees_tool_source_for_tools_call() -> None:
 
     app = Quater(mcp_enabled=True)
 
-    @app.get("/me", tool=True, auth=authenticate)
+    @app.get("/me", tool=True, auth=authenticate, description="Read current user.")
     async def me(request: Request) -> dict[str, object]:
         assert request.auth is not None
         return {
@@ -83,7 +88,12 @@ async def test_invalid_mcp_origin_rejects_before_auth_and_handler() -> None:
         mcp_allowed_origins=["https://app.example.com"],
     )
 
-    @app.get("/private", tool=True, auth=authenticate)
+    @app.get(
+        "/private",
+        tool=True,
+        auth=authenticate,
+        description="Read private data.",
+    )
     async def private() -> dict[str, bool]:
         nonlocal handler_calls
         handler_calls += 1
@@ -113,7 +123,7 @@ async def test_valid_mcp_origin_can_use_cors_origin_policy() -> None:
         cors=CORSConfig(allowed_origins=("https://app.example.com",)),
     )
 
-    @app.get("/ping", tool=True)
+    @app.get("/ping", tool=True, description="Check tool connectivity.")
     async def ping() -> dict[str, bool]:
         return {"ok": True}
 

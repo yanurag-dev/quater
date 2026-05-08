@@ -20,6 +20,7 @@ class RouteDefinition:
     path: str
     handler: Handler
     name: str
+    description: str | None = None
     tool: bool = False
     auth: Authenticate | None = None
     metadata: dict[str, Any] = field(default_factory=dict)

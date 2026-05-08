@@ -35,7 +35,11 @@ async def test_tools_list_exposes_only_tool_routes() -> None:
     async def internal() -> dict[str, bool]:
         return {"ok": True}
 
-    @app.get("/users/{id:int}", tool=True)
+    @app.get(
+        "/users/{id:int}",
+        tool=True,
+        description="Fetch one user for an agent.",
+    )
     async def get_user(id: int) -> dict[str, int]:
         """Fetch one user."""
         return {"id": id}
@@ -50,7 +54,7 @@ async def test_tools_list_exposes_only_tool_routes() -> None:
     assert result["tools"] == [
         {
             "name": "get_user",
-            "description": "Fetch one user.",
+            "description": "Fetch one user for an agent.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"id": {"type": "integer"}},

@@ -32,7 +32,12 @@ async def test_successful_tool_call_emits_sanitized_audit_event() -> None:
 
     app = Quater(mcp_enabled=True, mcp_audit=audit)
 
-    @app.get("/users/{id:int}", tool=True, auth=authenticate)
+    @app.get(
+        "/users/{id:int}",
+        tool=True,
+        auth=authenticate,
+        description="Fetch one user.",
+    )
     async def get_user(id: int) -> dict[str, int]:
         return {"id": id}
 
@@ -58,7 +63,7 @@ async def test_failed_tool_call_emits_failure_audit_event() -> None:
 
     app = Quater(mcp_enabled=True, mcp_audit=audit)
 
-    @app.get("/boom", tool=True)
+    @app.get("/boom", tool=True, description="Raise a handler error.")
     async def boom() -> dict[str, bool]:
         raise RuntimeError("boom")
 

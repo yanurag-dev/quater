@@ -17,6 +17,7 @@ from quater.request import Request
 from quater.response import Response, normalize_response
 from quater.routing import ParamSegment, RoutePattern, parse_route_pattern
 from quater.serialization import dumps_json
+from quater.tools.descriptions import resolve_tool_description
 from quater.tools.schema import tool_input_schema
 from quater.typing import RequestContext
 
@@ -24,7 +25,7 @@ from quater.typing import RequestContext
 @dataclass(slots=True, frozen=True)
 class ToolDefinition:
     name: str
-    description: str | None
+    description: str
     route: RouteDefinition
     pattern: RoutePattern
     handler_plan: HandlerPlan
@@ -55,13 +56,11 @@ class ToolDefinition:
         return normalize_response(result)
 
     def as_mcp_tool(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+        return {
             "name": self.name,
+            "description": self.description,
             "inputSchema": self.input_schema,
         }
-        if self.description:
-            payload["description"] = self.description
-        return payload
 
     def _build_request_parts(
         self,
@@ -140,7 +139,11 @@ def build_tool_registry(routes: tuple[RouteDefinition, ...]) -> ToolRegistry:
         )
         tools[name] = ToolDefinition(
             name=name,
-            description=_handler_description(route.handler),
+            description=resolve_tool_description(
+                route.name,
+                route.description,
+                route.handler,
+            ),
             route=route,
             pattern=pattern,
             handler_plan=handler_plan,
@@ -200,14 +203,6 @@ def _render_tool_path(
         else:
             parts.append(segment.value)
     return "/" + "/".join(parts)
-
-
-def _handler_description(handler: object) -> str | None:
-    doc = getattr(handler, "__doc__", None)
-    if not isinstance(doc, str):
-        return None
-    first_line = doc.strip().splitlines()[0] if doc.strip() else ""
-    return first_line or None
 
 
 def _allows_none(annotation: object) -> bool:

@@ -27,7 +27,7 @@ app = Quater(
 )
 
 
-@app.get("/me", tool=True, auth=authenticate)
+@app.get("/me", tool=True, auth=authenticate, description="Read current user.")
 async def me() -> dict[str, bool]:
     return {"ok": True}
 

@@ -18,13 +18,16 @@ The endpoint defaults to `/mcp`.
 
 ## Expose A Tool
 
-Routes are not tools unless they opt in:
+Routes are not tools unless they opt in and define a description:
 
 ```python
-@app.get("/users/{id:int}", tool=True)
+@app.get("/users/{id:int}", tool=True, description="Fetch one user by id.")
 async def get_user(id: int) -> dict[str, int]:
     return {"id": id}
 ```
+
+If `description=` is not set, Quater uses the handler docstring. Tool routes
+without either one fail when the route is registered.
 
 The route still works as a normal API:
 
@@ -62,7 +65,7 @@ The same handler can be reached through HTTP or MCP. Use
 `request.context.source` to distinguish the current invocation:
 
 ```python
-@app.get("/users/{id:int}", tool=True)
+@app.get("/users/{id:int}", tool=True, description="Fetch one user by id.")
 async def get_user(id: int, request: Request) -> dict[str, object]:
     return {
         "id": id,
@@ -92,7 +95,12 @@ HTTP route stays protected when exposed as a tool, and a public route stays
 public.
 
 ```python
-@app.get("/users/{id:int}", tool=True, auth=authenticate)
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one protected user by id.",
+)
 async def get_user(id: int, request: Request) -> dict[str, object]:
     assert request.auth is not None
     return {"id": id, "subject": request.auth.subject}

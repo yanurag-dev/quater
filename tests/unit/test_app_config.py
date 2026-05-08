@@ -95,12 +95,19 @@ def test_route_metadata_can_be_registered_without_compiling_routes() -> None:
         return {"ok": True}
 
     app = Quater()
-    route = app.add_route("get", "/health", handler, tool=True)
+    route = app.add_route(
+        "get",
+        "/health",
+        handler,
+        tool=True,
+        description="Check health.",
+    )
 
     assert app.routes == (route,)
     assert route.method == "GET"
     assert route.path == "/health"
     assert route.handler is handler
     assert route.name == "handler"
+    assert route.description == "Check health."
     assert route.tool is True
     assert route.auth is None
