@@ -30,7 +30,6 @@ class AppConfig:
     allowed_hosts: tuple[str, ...] = ()
     trusted_proxies: tuple[str, ...] = ()
     max_body_size: int = 2 * 1024 * 1024
-    request_logging: bool = True
     cors: CORSConfig | None = None
     content_security_policy: str | None = None
     mcp_enabled: bool = False
@@ -66,7 +65,6 @@ class AppConfig:
         allowed_hosts: Iterable[str] | None = None,
         trusted_proxies: Iterable[str] | None = None,
         max_body_size: MaxBodySize | None = None,
-        request_logging: bool | None = None,
         cors: CORSConfig | None = None,
         content_security_policy: str | None = None,
         mcp_enabled: bool | None = None,
@@ -93,9 +91,6 @@ class AppConfig:
                 self.max_body_size
                 if max_body_size is None
                 else parse_size(max_body_size, field_name="max_body_size")
-            ),
-            request_logging=(
-                self.request_logging if request_logging is None else request_logging
             ),
             cors=self.cors if cors is None else cors,
             content_security_policy=(

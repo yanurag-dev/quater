@@ -10,7 +10,6 @@ from quater.config import AppConfig
 from quater.exceptions import BadRequestError, HTTPError, RequestJSONError
 from quater.request import Request
 from quater.response import JSONResponse, Response, StreamResponse, TextResponse
-from quater.serialization import loads_json
 from quater.tools.audit import AuditHook, ToolAuditEvent, sanitize_arguments
 from quater.tools.registry import ToolRegistry
 from quater.typing import RequestContext
@@ -93,7 +92,7 @@ async def handle_mcp_request(
 
 async def _json_rpc_payload(request: Request) -> Mapping[str, object]:
     try:
-        payload = loads_json(await request.body())
+        payload = await request.json()
     except RequestJSONError:
         raise _JSONRPCError(None, -32700, "Parse error") from None
     if not isinstance(payload, Mapping):

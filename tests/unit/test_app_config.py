@@ -49,7 +49,6 @@ def test_secure_defaults_are_represented_before_enforcement_exists() -> None:
     assert app.config.allowed_hosts == ()
     assert app.config.trusted_proxies == ()
     assert app.config.max_body_size == 2 * 1024 * 1024
-    assert app.config.request_logging is True
     assert app.config.cors is None
     assert app.config.content_security_policy is None
     assert app.config.mcp_enabled is False

@@ -95,15 +95,14 @@ async def me(request: Request) -> dict[str, str]:
     return {"subject": request.auth.subject}
 ```
 
-## Request Logging
+## Access Logs
 
-Quater emits access logs through the `quater.access` logger at `INFO`. Configure
-Python logging in your app or server process to see them:
+Quater leaves request access logging to the server, matching how FastAPI gets
+request lines from Uvicorn rather than from FastAPI itself. With Granian, enable
+server access logs explicitly:
 
-```python
-import logging
-
-logging.basicConfig(level=logging.INFO)
+```bash
+uv run granian examples.basic_app:app.rsgi --interface rsgi --access-log
 ```
 
 ## MCP Tools

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from time import perf_counter
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from quater.access_log import build_access_log_record, log_access
 from quater.auth import authenticate_request
 from quater.config import AppConfig, MaxBodySize, SecurityMode
 from quater.core import Handler, RouteDefinition
@@ -68,7 +66,6 @@ class Quater:
         allowed_hosts: Iterable[str] | None = None,
         trusted_proxies: Iterable[str] | None = None,
         max_body_size: MaxBodySize | None = None,
-        request_logging: bool | None = None,
         cors: CORSConfig | None = None,
         content_security_policy: str | None = None,
         mcp_enabled: bool | None = None,
@@ -83,7 +80,6 @@ class Quater:
             allowed_hosts=allowed_hosts,
             trusted_proxies=trusted_proxies,
             max_body_size=max_body_size,
-            request_logging=request_logging,
             cors=cors,
             content_security_policy=content_security_policy,
             mcp_enabled=mcp_enabled,
@@ -429,17 +425,7 @@ class Quater:
     async def handle(self, request: Request) -> Response:
         """Handle a normalized request through the core dispatcher."""
 
-        started = perf_counter()
-        response = await self._handle_request(request)
-        if self.config.request_logging:
-            log_access(
-                build_access_log_record(
-                    request,
-                    response,
-                    duration_ms=(perf_counter() - started) * 1000,
-                )
-            )
-        return response
+        return await self._handle_request(request)
 
     async def _handle_request(self, request: Request) -> Response:
         context = resolve_request_security_context(request, self.config)

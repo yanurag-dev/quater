@@ -6,10 +6,10 @@ import inspect
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import UnionType
-from typing import Union, get_args, get_origin, get_type_hints
+from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from quater.core import Handler
-from quater.exceptions import BadRequestError, RouteBindingError
+from quater.exceptions import BadRequestError, RequestJSONError, RouteBindingError
 from quater.request import Request
 
 _EMPTY = inspect.Signature.empty
@@ -113,21 +113,24 @@ def _bind_query_parameter(request: Request, parameter: BoundParameter) -> object
 
 
 async def _bind_body_parameter(request: Request, parameter: BoundParameter) -> object:
-    data = await request.json()
     annotation = parameter.annotation
-    if annotation is _EMPTY or annotation is object:
-        return data
-    if annotation in {dict, list}:
-        return data
+    if _uses_generic_json(annotation):
+        return await request.json()
 
     try:
-        import msgspec
+        from quater.serialization import JSONValidationError, loads_json_as
 
-        return msgspec.convert(data, type=annotation)
-    except (TypeError, ValueError) as exc:
+        return loads_json_as(await request.body(), annotation)
+    except RequestJSONError:
+        raise
+    except (JSONValidationError, TypeError) as exc:
         raise BadRequestError(
             f"Invalid JSON body for parameter: {parameter.name}"
         ) from exc
+
+
+def _uses_generic_json(annotation: object) -> bool:
+    return annotation in {_EMPTY, Any, object, dict, list}
 
 
 def _is_query_type(annotation: object) -> bool:

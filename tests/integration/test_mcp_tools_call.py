@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from typing import cast
 
 import msgspec
 import pytest
@@ -68,6 +70,33 @@ async def test_tools_call_invokes_handler_with_tool_request_context() -> None:
         ],
         "isError": False,
     }
+
+
+@pytest.mark.asyncio
+async def test_tools_call_reuses_cached_json_rpc_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = Quater(mcp_enabled=True)
+    original_decode = cast(Callable[..., object], msgspec.json.decode)
+    decode_calls = 0
+
+    def decode_json(*args: object, **kwargs: object) -> object:
+        nonlocal decode_calls
+        decode_calls += 1
+        return original_decode(*args, **kwargs)
+
+    monkeypatch.setattr(msgspec.json, "decode", decode_json)
+
+    @app.get("/users/{id:int}", tool=True)
+    async def get_user(id: int) -> dict[str, object]:
+        return {"id": id}
+
+    status, body = await mcp_call(app, name="get_user", arguments={"id": 7})
+
+    assert status == 200
+    result = require_object(body["result"])
+    assert result["isError"] is False
+    assert decode_calls == 1
 
 
 @pytest.mark.asyncio
