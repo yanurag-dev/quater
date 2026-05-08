@@ -120,6 +120,25 @@ def test_wsgi_body_limit_uses_content_length_before_stream_read() -> None:
     assert stream.read_calls == 0
 
 
+def test_wsgi_body_limit_caps_reads_without_content_length() -> None:
+    app = Quater(max_body_size=2)
+    stream = CountingInput(b"abcdef")
+    environ = base_environ(method="POST", path="/echo", body=b"abcdef")
+    del environ["CONTENT_LENGTH"]
+    environ["wsgi.input"] = stream
+
+    @app.post("/echo")
+    async def echo(request: Request) -> bytes:
+        return await request.body()
+
+    status, _, body = call_wsgi(app, environ)
+
+    assert status.startswith("413 ")
+    assert body == b"Payload Too Large"
+    assert stream.read_calls == 1
+    assert stream.tell() == 3
+
+
 @pytest.mark.asyncio
 async def test_wsgi_can_be_called_from_an_existing_event_loop() -> None:
     app = Quater()

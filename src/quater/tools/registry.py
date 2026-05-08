@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from inspect import Signature
 from types import UnionType
 from typing import Union, get_args, get_origin
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from quater.auth import authenticate_request
 from quater.core import RouteDefinition
@@ -196,7 +196,7 @@ def _render_tool_path(
     parts: list[str] = []
     for segment in pattern.segments:
         if isinstance(segment, ParamSegment):
-            parts.append(str(path_params[segment.name]))
+            parts.append(quote(str(path_params[segment.name]), safe=""))
         else:
             parts.append(segment.value)
     return "/" + "/".join(parts)

@@ -25,6 +25,7 @@ def prepare_request_security(
     config: AppConfig,
 ) -> RequestSecurityContext:
     request.max_body_size = config.max_body_size
+    _validate_singleton_request_headers(request)
     _enforce_content_length(request, config.max_body_size)
 
     context = resolve_request_security_context(request, config)
@@ -101,6 +102,23 @@ def _enforce_content_length(request: Request, max_body_size: int) -> None:
         raise BadRequestError("Invalid Content-Length header")
     if content_length > max_body_size:
         raise PayloadTooLargeError
+
+
+def _validate_singleton_request_headers(request: Request) -> None:
+    host_values = request.headers.get_all("host")
+    authority_values = request.headers.get_all(":authority")
+
+    if len(host_values) > 1 or len(authority_values) > 1:
+        raise BadRequestError("Invalid Host header")
+
+    if host_values and authority_values:
+        host = _normalize_host(host_values[0])
+        authority = _normalize_host(authority_values[0])
+        if host != authority:
+            raise BadRequestError("Invalid Host header")
+
+    if len(request.headers.get_all("content-length")) > 1:
+        raise BadRequestError("Invalid Content-Length header")
 
 
 def _validate_allowed_host(host: str | None, allowed_hosts: tuple[str, ...]) -> None:

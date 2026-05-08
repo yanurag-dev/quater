@@ -76,6 +76,82 @@ async def test_asgi_multiple_body_chunks_reach_handler_without_loss() -> None:
 
 
 @pytest.mark.asyncio
+async def test_asgi_body_limit_stops_reading_oversized_chunked_body() -> None:
+    app = Quater(max_body_size=4)
+    receive_calls = 0
+    messages: list[ASGIMessage] = [
+        {"type": "http.request", "body": b"12", "more_body": True},
+        {"type": "http.request", "body": b"345", "more_body": True},
+        {"type": "http.request", "body": b"ignored", "more_body": False},
+    ]
+    sent: list[dict[str, object]] = []
+
+    @app.post("/echo")
+    async def echo(request: Request) -> bytes:
+        return await request.body()
+
+    async def receive() -> ASGIMessage:
+        nonlocal receive_calls
+        receive_calls += 1
+        return messages.pop(0)
+
+    async def send(message: Mapping[str, Any]) -> None:
+        sent.append(dict(message))
+
+    await app.asgi(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/echo",
+            "scheme": "http",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 5000),
+        },
+        receive,
+        send,
+    )
+
+    assert sent[0]["status"] == 413
+    assert response_body(sent) == b"Payload Too Large"
+    assert receive_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_asgi_non_stream_response_uses_single_final_body_message() -> None:
+    app = Quater()
+
+    @app.get("/hello")
+    async def hello() -> dict[str, str]:
+        return {"hello": "world"}
+
+    sent = await call_asgi(
+        app.asgi,
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/hello",
+            "scheme": "http",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 5000),
+        },
+        [{"type": "http.request", "body": b"", "more_body": False}],
+    )
+
+    body_messages = [
+        message for message in sent if message["type"] == "http.response.body"
+    ]
+    assert body_messages == [
+        {
+            "type": "http.response.body",
+            "body": b'{"hello":"world"}',
+            "more_body": False,
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_asgi_stream_response_uses_multiple_body_messages() -> None:
     app = Quater()
 

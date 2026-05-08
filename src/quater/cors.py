@@ -97,6 +97,14 @@ def add_cors_headers(
     return response
 
 
+def is_cors_preflight(request: Request) -> bool:
+    return (
+        request.method == "OPTIONS"
+        and request.headers.get("origin") is not None
+        and request.headers.get("access-control-request-method") is not None
+    )
+
+
 def _resolve_allowed_origin(origin: str, config: CORSConfig) -> str | None:
     if "*" in config.allowed_origins:
         return "*"
@@ -106,10 +114,7 @@ def _resolve_allowed_origin(origin: str, config: CORSConfig) -> str | None:
 
 
 def _is_preflight(request: Request) -> bool:
-    return (
-        request.method == "OPTIONS"
-        and request.headers.get("access-control-request-method") is not None
-    )
+    return is_cors_preflight(request)
 
 
 def _set_header(

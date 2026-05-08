@@ -179,6 +179,47 @@ async def test_rsgi_request_body_is_lazy_and_cached_by_request() -> None:
     assert protocol.response_body == b"hello"
 
 
+@pytest.mark.asyncio
+async def test_rsgi_body_limit_returns_safe_error() -> None:
+    app = Quater(max_body_size=2)
+
+    @app.post("/echo")
+    async def echo(request: Request) -> bytes:
+        return await request.body()
+
+    protocol = FakeHTTPProtocol(body=b"abc")
+    result = app.rsgi(FakeRSGIScope(method="POST", path="/echo"), protocol)
+
+    assert isawaitable(result)
+    await result
+    assert protocol.status == 413
+    assert protocol.response_body == b"Payload Too Large"
+
+
+@pytest.mark.asyncio
+async def test_rsgi_rejects_host_and_authority_mismatch() -> None:
+    app = Quater(allowed_hosts=["api.example.com"])
+
+    @app.get("/health")
+    async def health() -> dict[str, bool]:
+        return {"ok": True}
+
+    protocol = FakeHTTPProtocol()
+    result = app.rsgi(
+        FakeRSGIScope(
+            path="/health",
+            authority="evil.example.com",
+            headers=FakeRSGIHeaders([("host", "api.example.com")]),
+        ),
+        protocol,
+    )
+
+    assert isawaitable(result)
+    await result
+    assert protocol.status == 400
+    assert protocol.response_body == b"Invalid Host header"
+
+
 def test_rsgi_websocket_scope_closes_without_router_dispatch() -> None:
     app = Quater()
     calls = 0

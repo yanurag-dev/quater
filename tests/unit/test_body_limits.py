@@ -73,3 +73,35 @@ async def test_malformed_content_length_is_a_safe_request_error() -> None:
 
     assert response.status_code == 400
     assert response.body == b"Invalid Content-Length header"
+
+
+@pytest.mark.asyncio
+async def test_duplicate_content_length_is_rejected_before_body_reader() -> None:
+    reader_calls = 0
+
+    async def read_body() -> bytes:
+        nonlocal reader_calls
+        reader_calls += 1
+        return b"{}"
+
+    app = Quater(max_body_size=16)
+
+    @app.post("/upload")
+    async def upload() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = await app.handle(
+        Request(
+            method="POST",
+            path="/upload",
+            headers=(
+                ("content-length", "2"),
+                ("content-length", "2"),
+            ),
+            body=read_body,
+        )
+    )
+
+    assert response.status_code == 400
+    assert response.body == b"Invalid Content-Length header"
+    assert reader_calls == 0

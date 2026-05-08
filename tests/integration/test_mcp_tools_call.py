@@ -113,6 +113,30 @@ async def test_normal_api_call_keeps_api_request_context() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tools_call_escapes_rendered_request_path_parameters() -> None:
+    app = Quater(mcp_enabled=True)
+
+    @app.get("/files/{name}", tool=True)
+    async def get_file(name: str, request: Request) -> dict[str, str]:
+        return {"name": name, "path": request.path}
+
+    status, body = await mcp_call(
+        app,
+        name="get_file",
+        arguments={"name": "reports/2026 draft"},
+    )
+
+    assert status == 200
+    result = require_object(body["result"])
+    content = require_object_list(result["content"])
+    assert (
+        content[0]["text"]
+        == '{"name":"reports/2026 draft","path":"/files/reports%2F2026%20draft"}'
+    )
+    assert result["isError"] is False
+
+
+@pytest.mark.asyncio
 async def test_tools_call_binds_body_model_from_arguments() -> None:
     app = Quater(mcp_enabled=True)
 

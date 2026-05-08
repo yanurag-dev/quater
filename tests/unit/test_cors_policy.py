@@ -5,6 +5,7 @@ import pytest
 from quater import Quater, Request
 from quater.cors import CORSConfig
 from quater.exceptions import ConfigurationError
+from quater.typing import AuthContext, AuthRequest
 
 
 @pytest.mark.asyncio
@@ -86,6 +87,50 @@ async def test_preflight_response_includes_requested_method_and_headers() -> Non
     assert "POST" in headers["access-control-allow-methods"]
     assert headers["access-control-allow-headers"] == "authorization, x-client"
     assert headers["access-control-max-age"] == "600"
+
+
+@pytest.mark.asyncio
+async def test_preflight_does_not_require_route_or_authentication() -> None:
+    auth_calls = 0
+    handler_calls = 0
+
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        nonlocal auth_calls
+        auth_calls += 1
+        return AuthContext(subject="user_1")
+
+    app = Quater(
+        cors=CORSConfig(
+            allowed_origins=("https://app.example.com",),
+            allowed_headers=("authorization",),
+        )
+    )
+
+    @app.post("/items", auth=authenticate)
+    async def create_item() -> dict[str, bool]:
+        nonlocal handler_calls
+        handler_calls += 1
+        return {"ok": True}
+
+    response = await app.handle(
+        Request(
+            method="OPTIONS",
+            path="/items",
+            headers={
+                "origin": "https://app.example.com",
+                "access-control-request-method": "POST",
+                "access-control-request-headers": "authorization",
+            },
+        )
+    )
+
+    headers = dict(response.headers)
+    assert response.status_code == 204
+    assert headers["access-control-allow-origin"] == "https://app.example.com"
+    assert "POST" in headers["access-control-allow-methods"]
+    assert headers["access-control-allow-headers"] == "authorization"
+    assert auth_calls == 0
+    assert handler_calls == 0
 
 
 def test_wildcard_origin_with_credentials_fails_configuration() -> None:

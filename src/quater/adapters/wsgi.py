@@ -15,6 +15,7 @@ from quater.adapters._shared import (
     response_status,
 )
 from quater.datastructures import HeaderItems
+from quater.exceptions import PayloadTooLargeError
 from quater.request import BodyReader
 
 WSGIEnvironment: TypeAlias = dict[str, object]
@@ -62,7 +63,7 @@ class WSGIAdapter:
             scheme=str(environ.get("wsgi.url_scheme", "http")),
             headers=_headers_from_environ(environ),
             query_string=str(environ.get("QUERY_STRING", "")),
-            body=_body_reader(environ),
+            body=_body_reader(environ, self._app.config.max_body_size),
             client=_optional_string(environ.get("REMOTE_ADDR")),
         )
         response = await self._app.handle(request)
@@ -94,7 +95,7 @@ def _headers_from_environ(environ: WSGIEnvironment) -> HeaderItems:
     return tuple(headers)
 
 
-def _body_reader(environ: WSGIEnvironment) -> BodyReader:
+def _body_reader(environ: WSGIEnvironment, max_body_size: int) -> BodyReader:
     stream = cast(WSGIInput | None, environ.get("wsgi.input"))
 
     async def read() -> bytes:
@@ -102,7 +103,12 @@ def _body_reader(environ: WSGIEnvironment) -> BodyReader:
             return b""
         content_length = _content_length(environ)
         if content_length is None:
-            return stream.read()
+            body = stream.read(max_body_size + 1)
+            if len(body) > max_body_size:
+                raise PayloadTooLargeError
+            return body
+        if content_length > max_body_size:
+            raise PayloadTooLargeError
         return stream.read(content_length)
 
     return read

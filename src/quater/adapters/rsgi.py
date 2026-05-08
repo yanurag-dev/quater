@@ -12,6 +12,7 @@ from quater.adapters._shared import (
     request_from_parts,
     response_headers,
 )
+from quater.exceptions import PayloadTooLargeError
 from quater.request import BodyReader
 
 RSGICallbackResult: TypeAlias = Awaitable[None] | tuple[int, bool] | None
@@ -84,8 +85,11 @@ class RSGIAdapter:
         protocol: RSGIHTTPProtocol,
     ) -> None:
         headers = tuple(scope.headers.items())
-        if scope.authority is not None and not _has_header(headers, "host"):
-            headers = (*headers, ("host", scope.authority))
+        if scope.authority is not None:
+            if _has_header(headers, "host"):
+                headers = (*headers, (":authority", scope.authority))
+            else:
+                headers = (*headers, ("host", scope.authority))
 
         request = request_from_parts(
             method=scope.method,
@@ -93,7 +97,7 @@ class RSGIAdapter:
             scheme=scope.scheme,
             headers=headers,
             query_string=scope.query_string,
-            body=_body_reader(protocol),
+            body=_body_reader(protocol, self._app.config.max_body_size),
             client=first_client_address(scope.client),
         )
         response = await self._app.handle(request)
@@ -119,9 +123,12 @@ class RSGIAdapter:
         protocol.response_empty(response.status_code, response_header_list)
 
 
-def _body_reader(protocol: RSGIHTTPProtocol) -> BodyReader:
+def _body_reader(protocol: RSGIHTTPProtocol, max_body_size: int) -> BodyReader:
     async def read() -> bytes:
-        return await protocol()
+        body = await protocol()
+        if len(body) > max_body_size:
+            raise PayloadTooLargeError
+        return body
 
     return read
 

@@ -12,6 +12,7 @@ from quater.adapters._shared import (
     iter_response_body,
     request_from_parts,
 )
+from quater.exceptions import PayloadTooLargeError
 from quater.request import BodyReader
 
 ASGIMessage: TypeAlias = MutableMapping[str, Any]
@@ -74,7 +75,7 @@ class ASGIAdapter:
                 _decode_header_pair(pair) for pair in scope.get("headers", ())
             ),
             query_string=cast(str | bytes, scope.get("query_string", b"")),
-            body=_body_reader(receive),
+            body=_body_reader(receive, self._app.config.max_body_size),
             client=first_client_address(scope.get("client")),
         )
         response = await self._app.handle(request)
@@ -87,6 +88,16 @@ class ASGIAdapter:
                 "headers": headers,
             }
         )
+
+        if not response.is_streaming:
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": response.body,
+                    "more_body": False,
+                }
+            )
+            return
 
         chunks_sent = False
         async for chunk in iter_response_body(response):
@@ -159,8 +170,9 @@ def _decode_header_part(value: bytes | str) -> str:
     return value
 
 
-async def _read_body(receive: ASGIReceive) -> bytes:
+async def _read_body(receive: ASGIReceive, max_body_size: int) -> bytes:
     chunks: list[bytes] = []
+    body_size = 0
     while True:
         message = await receive()
         message_type = message.get("type")
@@ -170,14 +182,18 @@ async def _read_body(receive: ASGIReceive) -> bytes:
             raise ValueError(f"Unsupported ASGI HTTP message: {message_type!r}")
         body = message.get("body", b"")
         if body:
-            chunks.append(cast(bytes, body))
+            chunk = cast(bytes, body)
+            body_size += len(chunk)
+            if body_size > max_body_size:
+                raise PayloadTooLargeError
+            chunks.append(chunk)
         if not message.get("more_body", False):
             break
     return b"".join(chunks)
 
 
-def _body_reader(receive: ASGIReceive) -> BodyReader:
+def _body_reader(receive: ASGIReceive, max_body_size: int) -> BodyReader:
     async def read() -> bytes:
-        return await _read_body(receive)
+        return await _read_body(receive, max_body_size)
 
     return read

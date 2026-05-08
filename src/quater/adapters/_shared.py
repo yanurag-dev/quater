@@ -6,12 +6,15 @@ from collections.abc import AsyncIterator, Iterable, Mapping
 from http import HTTPStatus
 from typing import Protocol
 
+from quater.config import AppConfig
 from quater.datastructures import HeaderItems
 from quater.request import Request, RequestBody
 from quater.response import Response, StreamResponse
 
 
 class QuaterApplication(Protocol):
+    config: AppConfig
+
     async def handle(self, request: Request) -> Response: ...
 
     async def startup(self) -> None: ...

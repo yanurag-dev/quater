@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 from quater.auth import authenticate_request
 from quater.config import AppConfig, MaxBodySize, SecurityMode
 from quater.core import Handler, RouteDefinition
-from quater.cors import CORSConfig, add_cors_headers
+from quater.cors import CORSConfig, add_cors_headers, is_cors_preflight
 from quater.exceptions import MiddlewareStateError
 from quater.lifespan import LifespanManager
 from quater.middleware import (
@@ -21,7 +21,7 @@ from quater.middleware import (
     default_exception_response,
 )
 from quater.request import Request
-from quater.response import Response
+from quater.response import EmptyResponse, Response
 from quater.router import Router
 from quater.security import (
     RequestSecurityContext,
@@ -510,6 +510,8 @@ class Quater:
         )
         try:
             context = prepare_request_security(request, self.config)
+            if self.config.cors is not None and is_cors_preflight(request):
+                return self._finalize_response(EmptyResponse(), request, context)
             if is_mcp_request:
                 from quater.tools.mcp import mcp_request_context, validate_mcp_origin
 
