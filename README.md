@@ -43,6 +43,12 @@ Run the RSGI fast path with Granian:
 uv run granian examples.basic_app:app --interface rsgi
 ```
 
+During local backend development, enable Granian's file watcher:
+
+```bash
+uv run granian examples.basic_app:app --interface rsgi --reload
+```
+
 Compatibility adapters are available for ASGI and WSGI:
 
 ```bash

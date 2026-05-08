@@ -24,6 +24,12 @@ Run with Granian RSGI:
 uv run granian examples.basic_app:app --interface rsgi
 ```
 
+Use hot reload while building locally:
+
+```bash
+uv run granian examples.basic_app:app --interface rsgi --reload
+```
+
 RSGI is the primary path because it maps directly to Granian's fast Python
 interface. ASGI and WSGI are compatibility paths that still call the same
 `Quater.handle()` core.

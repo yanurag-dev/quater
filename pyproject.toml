@@ -23,7 +23,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "granian>=2.0",
+  "granian[reload]>=2.0",
   "msgspec>=0.18",
 ]
 
