@@ -11,7 +11,7 @@ async def test_mcp_docs_are_generated_by_default() -> None:
     async def authenticate(ctx: AuthRequest) -> AuthContext | None:
         return AuthContext(subject="user_1")
 
-    app = Quater()
+    app = Quater(mcp_auth=authenticate)
 
     @app.get(
         "/users/{id:int}",
@@ -57,3 +57,29 @@ async def test_mcp_docs_can_be_disabled() -> None:
     response = await app.handle(Request(method="GET", path="/mcp/docs"))
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_mcp_docs_use_mcp_auth_when_tools_are_registered() -> None:
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        if ctx.headers.get("authorization") != "Bearer docs":
+            return None
+        return AuthContext(subject="docs-user")
+
+    app = Quater(mcp_auth=authenticate)
+
+    @app.get("/private", tool=True, description="Read private data.")
+    async def private() -> dict[str, bool]:
+        return {"ok": True}
+
+    denied = await app.handle(Request(method="GET", path="/mcp/docs"))
+    allowed = await app.handle(
+        Request(
+            method="GET",
+            path="/mcp/docs",
+            headers={"authorization": "Bearer docs"},
+        )
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200

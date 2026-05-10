@@ -38,8 +38,12 @@ app = Quater(
     docs_path="/docs",
     openapi_path="/openapi.json",
     mcp_docs_path="/mcp/docs",
+    mcp_auth=authenticate,
 )
 ```
+
+The snippet assumes you already defined `authenticate`. For an app with no MCP
+tools, omit `mcp_auth`.
 
 Stable constructor options:
 
@@ -56,9 +60,11 @@ Stable constructor options:
 - `openapi_path`
 - `mcp_docs_path`
 - `mcp_allowed_origins`
+- `mcp_auth`
 - `mcp_audit`
 
-The MCP JSON-RPC endpoint is always `/mcp`. There is no `mcp_path` option.
+The MCP JSON-RPC endpoint is always `/mcp`. There is no `mcp_path` option. If
+an app exposes tools, `mcp_auth` is required.
 
 ## Routes
 
@@ -92,7 +98,8 @@ Stable decorator options:
 - `exception_handlers`
 
 `tool=True` exposes the route through MCP. Tool routes must have a useful
-description, either through `description=` or the handler docstring.
+description, either through `description=` or the handler docstring. The app
+must also be created with `mcp_auth`.
 
 ## Request And Context
 
@@ -108,7 +115,8 @@ async def whoami(request: Request) -> dict[str, object]:
     }
 ```
 
-`request.context.source` is `"api"` for HTTP calls and `"tool"` for MCP
+`request.context.source` is `"api"` for HTTP calls, `"mcp"` for MCP protocol
+requests such as `initialize` and `tools/list`, and `"tool"` for MCP
 `tools/call`.
 
 ## Auth
@@ -130,6 +138,16 @@ async def me(request: Request) -> dict[str, str]:
     assert request.auth is not None
     return {"subject": request.auth.subject}
 ```
+
+For MCP tools, the same hook can also be passed as `mcp_auth`:
+
+```python
+app = Quater(mcp_auth=authenticate)
+```
+
+`mcp_auth` protects MCP protocol requests and `/mcp/docs`. Route `auth=` still
+protects individual handlers. If both point to the same function, Quater runs it
+once for an MCP tool call.
 
 ## Responses
 
@@ -180,7 +198,10 @@ async def audit(event: ToolAuditEvent) -> None:
     print(event.tool_name, event.subject, event.success)
 
 
-app = Quater(mcp_audit=audit)
+app = Quater(
+    mcp_auth=authenticate,
+    mcp_audit=audit,
+)
 ```
 
 Tool arguments are redacted before they reach the hook.

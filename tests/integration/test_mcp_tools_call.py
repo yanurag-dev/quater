@@ -7,7 +7,11 @@ from typing import cast
 import msgspec
 import pytest
 
-from quater import Quater, Request
+from quater import AuthContext, AuthRequest, Quater, Request
+
+
+async def allow_mcp_auth(ctx: AuthRequest) -> AuthContext | None:
+    return AuthContext(subject="mcp")
 
 
 class CreateUser(msgspec.Struct):
@@ -26,7 +30,10 @@ async def mcp_call(
         Request(
             method="POST",
             path="/mcp",
-            headers={"content-type": "application/json"},
+            headers={
+                "authorization": "Bearer mcp",
+                "content-type": "application/json",
+            },
             body=json.dumps(
                 {
                     "jsonrpc": "2.0",
@@ -53,20 +60,25 @@ def require_object_list(value: object) -> list[dict[str, object]]:
 
 @pytest.mark.asyncio
 async def test_tools_call_invokes_handler_with_tool_request_context() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int, request: Request) -> dict[str, object]:
         assert request.context.source == "tool"
         assert request.context.tool_name == "get_user"
-        return {"id": id, "source": request.context.source}
+        assert request.auth is not None
+        return {
+            "id": id,
+            "source": request.context.source,
+            "subject": request.auth.subject,
+        }
 
     status, body = await mcp_call(app, name="get_user", arguments={"id": 7})
 
     assert status == 200
     assert body["result"] == {
         "content": [
-            {"type": "text", "text": '{"id":7,"source":"tool"}'},
+            {"type": "text", "text": '{"id":7,"source":"tool","subject":"mcp"}'},
         ],
         "isError": False,
     }
@@ -76,7 +88,7 @@ async def test_tools_call_invokes_handler_with_tool_request_context() -> None:
 async def test_tools_call_reuses_cached_json_rpc_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
     original_decode = cast(Callable[..., object], msgspec.json.decode)
     decode_calls = 0
 
@@ -101,7 +113,7 @@ async def test_tools_call_reuses_cached_json_rpc_payload(
 
 @pytest.mark.asyncio
 async def test_normal_api_call_keeps_api_request_context() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int, request: Request) -> dict[str, object]:
@@ -114,7 +126,7 @@ async def test_normal_api_call_keeps_api_request_context() -> None:
 
 @pytest.mark.asyncio
 async def test_tools_call_escapes_rendered_request_path_parameters() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.get("/files/{name}", tool=True, description="Fetch one file.")
     async def get_file(name: str, request: Request) -> dict[str, str]:
@@ -138,7 +150,7 @@ async def test_tools_call_escapes_rendered_request_path_parameters() -> None:
 
 @pytest.mark.asyncio
 async def test_tools_call_binds_body_model_from_arguments() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.post("/users", tool=True, description="Create one user.")
     async def create_user(user: CreateUser) -> dict[str, object]:
@@ -171,7 +183,7 @@ async def test_unknown_tool_returns_json_rpc_error() -> None:
 
 @pytest.mark.asyncio
 async def test_invalid_tool_arguments_do_not_call_handler() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
     calls = 0
 
     @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
@@ -189,7 +201,7 @@ async def test_invalid_tool_arguments_do_not_call_handler() -> None:
 
 @pytest.mark.asyncio
 async def test_handler_error_becomes_tool_result_error() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.get("/boom", tool=True, description="Raise a handler error.")
     async def boom() -> dict[str, bool]:

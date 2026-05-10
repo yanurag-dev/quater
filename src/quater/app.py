@@ -16,7 +16,7 @@ from quater.config import (
 )
 from quater.core import Handler, RouteDefinition
 from quater.cors import CORSConfig, add_cors_headers, is_cors_preflight
-from quater.exceptions import MiddlewareStateError
+from quater.exceptions import ConfigurationError, MiddlewareStateError
 from quater.lifespan import LifespanManager
 from quater.middleware import (
     AfterMiddleware,
@@ -44,6 +44,7 @@ from quater.typing import Authenticate, LifespanHook
 
 HandlerT = TypeVar("HandlerT", bound=Handler)
 MCP_PATH = "/mcp"
+MCP_AUTH_REQUIRED_MESSAGE = "MCP tools require mcp_auth"
 
 
 if TYPE_CHECKING:
@@ -66,6 +67,7 @@ class Quater:
     __slots__ = (
         "config",
         "mcp_audit",
+        "mcp_auth",
         "name",
         "_asgi_adapter",
         "_lifespan",
@@ -93,6 +95,7 @@ class Quater:
         content_security_policy: str | None = None,
         mcp_docs_path: str | None | _Unset = _UNSET,
         mcp_allowed_origins: Iterable[str] | None = None,
+        mcp_auth: Authenticate | None = None,
         mcp_audit: AuditHook | None = None,
         docs_path: str | None | _Unset = _UNSET,
         openapi_path: str | None | _Unset = _UNSET,
@@ -112,6 +115,7 @@ class Quater:
             mcp_allowed_origins=mcp_allowed_origins,
         )
         self.mcp_audit = mcp_audit
+        self.mcp_auth = mcp_auth
         self._asgi_adapter: ASGIAdapter | None = None
         self._lifespan = LifespanManager()
         self._middleware = MiddlewareStack()
@@ -244,6 +248,8 @@ class Quater:
             if tool
             else normalize_route_description(description)
         )
+        if tool and self.mcp_auth is None:
+            raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
 
         route = RouteDefinition(
             method=method.upper(),
@@ -454,6 +460,8 @@ class Quater:
         from quater.tools.registry import build_tool_registry
 
         self._tool_registry = build_tool_registry(tuple(self._routes))
+        if self._tool_registry.tools and self.mcp_auth is None:
+            raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
         self._routes_dirty = False
         return self._router
 
@@ -551,6 +559,8 @@ class Quater:
 
                 validate_mcp_origin(request, self.config)
                 request.context = await mcp_request_context(request)
+                if self.mcp_auth is not None:
+                    await authenticate_request(self.mcp_auth, request)
             if not is_mcp_request:
                 router = self._compiled_router()
                 match = router.match(request.method, request.path)
@@ -566,6 +576,7 @@ class Quater:
             response = await handle_mcp_request(
                 request,
                 self._compiled_tool_registry(),
+                transport_auth=self.mcp_auth,
                 audit_hook=self.mcp_audit,
                 debug=self.config.debug,
             )
@@ -583,6 +594,8 @@ class Quater:
             from quater.tools.registry import build_tool_registry
 
             self._tool_registry = build_tool_registry(tuple(self._routes))
+            if self._tool_registry.tools and self.mcp_auth is None:
+                raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
         return self._tool_registry
 
     def _builtin_routes(self) -> tuple[RouteDefinition, ...]:
@@ -625,6 +638,7 @@ class Quater:
                     path=self.config.mcp_docs_path,
                     handler=self._mcp_docs,
                     name="quater_mcp_docs",
+                    auth=self.mcp_auth,
                     metadata={"include_in_openapi": False},
                 )
             )

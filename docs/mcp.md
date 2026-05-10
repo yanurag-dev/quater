@@ -2,24 +2,95 @@
 
 Quater can expose selected HTTP routes as MCP tools.
 
-The route stays a normal API. MCP is another way to call it. That is the design:
-one handler, one auth rule, one validation path.
+The route stays the source of truth. MCP is another way to call it, not a second
+app hiding beside your API. The handler, validation, middleware, response
+serialization, and route auth all stay in one place.
+
+There is one extra rule: if the app exposes tools, it must define `mcp_auth`.
+Tools are executable capabilities. Even `tools/list` reveals names, descriptions,
+and schemas, so Quater does not expose a tool registry without an auth boundary.
+
+## The Auth Model
+
+MCP auth has two layers.
+
+- `mcp_auth` protects the MCP transport: `initialize`, `tools/list`,
+  `tools/call`, and `/mcp/docs`.
+- Route `auth=` protects a specific handler, the same way it does for normal
+  HTTP.
+
+Most apps use the same function for both:
+
+```python
+from quater import AuthContext, AuthRequest, Quater, Request
+
+
+async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+    if ctx.headers.get("authorization") != "Bearer demo-token":
+        return None
+    return AuthContext(subject="demo-user")
+
+
+app = Quater(
+    mcp_allowed_origins=["http://localhost:3000"],
+    mcp_auth=authenticate,
+)
+
+
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one protected user by id.",
+)
+async def get_user(id: int, request: Request) -> dict[str, object]:
+    assert request.auth is not None
+    return {"id": id, "subject": request.auth.subject}
+```
+
+When `mcp_auth` and route `auth=` are the same function, Quater runs it once for
+an MCP tool call. If they are different functions, Quater runs both. That gives
+you a clean split when you need one token for the MCP client and a separate
+route-level user or scope check.
+
+A route without `auth=` is still public over normal HTTP. Over MCP, it is behind
+`mcp_auth` because the tool registry itself is protected.
 
 ## Configure MCP
 
-```python
-from quater import Quater
+The JSON-RPC endpoint is fixed:
 
+```text
+POST /mcp
+```
+
+There is no `mcp_path` option. If you host the app at
+`https://api.example.com`, the MCP URL is:
+
+```text
+https://api.example.com/mcp
+```
+
+The human docs page defaults to:
+
+```text
+GET /mcp/docs
+```
+
+Set `mcp_docs_path=None` to turn off the page. The JSON-RPC endpoint stays
+available.
+
+For browser-based MCP clients, use `mcp_allowed_origins`:
+
+```python
 app = Quater(
-    mcp_docs_path="/mcp/docs",
-    mcp_allowed_origins=["http://localhost:3000"],
+    mcp_allowed_origins=["https://app.example.com"],
+    mcp_auth=authenticate,
 )
 ```
 
-The JSON-RPC endpoint is fixed at `POST /mcp`.
-
-The docs page defaults to `/mcp/docs`. Set `mcp_docs_path=None` to turn off the
-human page. The MCP endpoint itself stays available.
+If `mcp_allowed_origins` is empty and CORS is configured, Quater uses the CORS
+origins for MCP origin validation too.
 
 ## Expose A Tool
 
@@ -31,11 +102,11 @@ async def get_user(id: int) -> dict[str, int]:
     return {"id": id}
 ```
 
-Descriptions are required. Use `description=` or a handler docstring. This is
-not decoration for humans only. It is the text an agent sees in `tools/list`, so
-it needs to say what the tool is for.
+Descriptions are required. Use `description=` or a handler docstring. This text
+is what an agent sees in `tools/list`, so write it like you are explaining when
+to use the tool. `get_user` is a name. `Fetch one user by id.` is intent.
 
-This still works as HTTP:
+The route still works as HTTP:
 
 ```text
 GET /users/123
@@ -50,6 +121,37 @@ It also appears in MCP discovery:
   "method": "tools/list"
 }
 ```
+
+## Client Requests
+
+Authorization is normal HTTP authorization. If your client uses a bearer token,
+send it on every MCP HTTP request:
+
+```http
+Authorization: Bearer <token>
+```
+
+`initialize` is not a login. Quater does not remember the token from
+`initialize`, and an expired token on a later `tools/call` fails with
+`401 Unauthorized`.
+
+Many MCP clients use a config shaped roughly like this:
+
+```json
+{
+  "mcpServers": {
+    "quater": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
+Client config field names vary. The important parts are the `/mcp` URL and the
+`Authorization` header on every request.
 
 ## Client Lifecycle
 
@@ -112,6 +214,13 @@ request.context.source == "api"
 request.context.tool_name is None
 ```
 
+MCP protocol requests that are not tool calls use:
+
+```python
+request.context.source == "mcp"
+request.context.tool_name is None
+```
+
 MCP tool calls use:
 
 ```python
@@ -119,24 +228,8 @@ request.context.source == "tool"
 request.context.tool_name == "get_user"
 ```
 
-## Auth
-
-MCP tool calls use the auth hook attached to the route.
-
-```python
-@app.get(
-    "/users/{id:int}",
-    tool=True,
-    auth=authenticate,
-    description="Fetch one protected user by id.",
-)
-async def get_user(id: int, request: Request) -> dict[str, object]:
-    assert request.auth is not None
-    return {"id": id, "subject": request.auth.subject}
-```
-
-A protected HTTP route stays protected when exposed as a tool. A public route
-stays public. No second auth system hiding off to the side.
+Auth hooks receive the same context through `AuthRequest.context`. That is useful
+when one hook accepts different tokens for browser API calls and MCP clients.
 
 ## Input And Output Docs
 
@@ -167,7 +260,10 @@ async def audit(event: ToolAuditEvent) -> None:
     print(event.tool_name, event.subject, event.success)
 
 
-app = Quater(mcp_audit=audit)
+app = Quater(
+    mcp_auth=authenticate,
+    mcp_audit=audit,
+)
 ```
 
 Arguments are redacted before they reach the hook.
@@ -181,7 +277,8 @@ Arguments are redacted before they reach the hook.
 - `tools/list`
 - `tools/call`
 - `GET /mcp/docs`
-- auth parity with HTTP
+- MCP transport auth with `mcp_auth`
+- route-level auth inside tool calls
 - origin validation
 - protocol version header validation
 - audit hook support

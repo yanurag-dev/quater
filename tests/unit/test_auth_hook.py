@@ -169,7 +169,10 @@ async def test_auth_is_per_route() -> None:
 
 @pytest.mark.asyncio
 async def test_http_tool_route_does_not_require_auth_by_default() -> None:
-    app = Quater()
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        return AuthContext(subject="mcp")
+
+    app = Quater(mcp_auth=authenticate)
 
     @app.get("/public-tool", tool=True, description="Read public tool status.")
     async def public_tool() -> dict[str, bool]:

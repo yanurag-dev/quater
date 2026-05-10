@@ -29,7 +29,7 @@ async def test_successful_tool_call_emits_sanitized_audit_event() -> None:
     async def authenticate(ctx: AuthRequest) -> AuthContext | None:
         return AuthContext(subject="user_1")
 
-    app = Quater(mcp_audit=audit)
+    app = Quater(mcp_auth=authenticate, mcp_audit=audit)
 
     @app.get(
         "/users/{id:int}",
@@ -60,7 +60,10 @@ async def test_failed_tool_call_emits_failure_audit_event() -> None:
     async def audit(event: ToolAuditEvent) -> None:
         events.append(event)
 
-    app = Quater(mcp_audit=audit)
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        return AuthContext(subject="mcp")
+
+    app = Quater(mcp_auth=authenticate, mcp_audit=audit)
 
     @app.get("/boom", tool=True, description="Raise a handler error.")
     async def boom() -> dict[str, bool]:

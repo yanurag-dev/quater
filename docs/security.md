@@ -72,10 +72,19 @@ async def me(request: Request) -> dict[str, str]:
 ```
 
 Returning `None` gives `401 Unauthorized`. Routes without `auth=` stay public.
-The same hook protects normal HTTP calls and MCP tool calls.
 
-`AuthRequest.context.source` is `"api"` for HTTP and `"tool"` for MCP
-`tools/call`.
+For MCP tools, pass an auth hook to the app as `mcp_auth`:
+
+```python
+app = Quater(mcp_auth=authenticate)
+```
+
+`mcp_auth` protects `initialize`, `tools/list`, `tools/call`, and `/mcp/docs`.
+Route `auth=` still protects the handler. If `mcp_auth` and route `auth=` are
+the same function, Quater runs it once for a tool call.
+
+`AuthRequest.context.source` is `"api"` for HTTP, `"mcp"` for MCP protocol
+requests, and `"tool"` for MCP `tools/call`.
 
 ## CORS And MCP Origins
 
@@ -98,15 +107,25 @@ is configured, Quater uses the CORS origins for MCP too.
 ```python
 app = Quater(
     mcp_allowed_origins=["https://app.example.com"],
+    mcp_auth=authenticate,
 )
 ```
 
 Invalid MCP origins are rejected before auth and before tool lookup.
 
+MCP auth is checked per HTTP request. `initialize` does not create an
+authenticated session, and Quater does not reuse its token for later calls.
+Clients should send their bearer token on `initialize`, `tools/list`, and every
+`tools/call`.
+
 ## Documentation Endpoints
 
-Docs are public endpoints. That is useful in development and sometimes fine in
-production. It is not always fine.
+OpenAPI docs are public endpoints by default. That is useful in development and
+sometimes fine in production. It is not always fine.
+
+The MCP docs page is different. If `mcp_auth` is configured, `/mcp/docs` uses it.
+If you expose tools, `mcp_auth` is required, so the MCP docs page is protected
+too.
 
 Defaults:
 

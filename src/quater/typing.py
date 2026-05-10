@@ -20,7 +20,7 @@ def _empty_metadata() -> Mapping[str, object]:
 class RequestContext:
     """Small per-call context shared by HTTP APIs and tool calls."""
 
-    source: Literal["api", "tool"] = "api"
+    source: Literal["api", "mcp", "tool"] = "api"
     tool_name: str | None = None
 
 

@@ -17,6 +17,7 @@ app = Quater(
     openapi_path="/openapi.json",
     mcp_docs_path="/mcp/docs",
     mcp_allowed_origins=["http://localhost:3000"],
+    mcp_auth=authenticate,
 )
 
 
@@ -33,7 +34,7 @@ async def health() -> dict[str, bool]:
 )
 async def get_user(id: int, request: Request) -> dict[str, object]:
     assert_type(id, int)
-    assert_type(request.context.source, Literal["api", "tool"])
+    assert_type(request.context.source, Literal["api", "mcp", "tool"])
     return {
         "id": id,
         "source": request.context.source,

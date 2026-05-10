@@ -42,7 +42,10 @@ Quater serves docs by default:
 
 - `/docs` for Swagger UI.
 - `/openapi.json` for OpenAPI.
-- `/mcp/docs` for exposed MCP tools.
+- `/mcp/docs` for exposed MCP tools. It is empty until you expose a tool.
+
+If you expose tools, pass `mcp_auth` when creating the app. Quater uses that
+hook for MCP protocol requests and the MCP docs page.
 
 Set a path to `None` to turn that page off:
 
@@ -91,6 +94,38 @@ class UserIn(msgspec.Struct):
 async def create_user(user: UserIn) -> dict[str, object]:
     return {"name": user.name, "age": user.age}
 ```
+
+## First MCP Tool
+
+Expose a route as a tool with `tool=True`. Tool descriptions are required because
+agents read them during `tools/list`.
+
+```python
+from quater import AuthContext, AuthRequest, Quater, Request
+
+
+async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+    if ctx.headers.get("authorization") != "Bearer demo-token":
+        return None
+    return AuthContext(subject="demo-user")
+
+
+app = Quater(mcp_auth=authenticate)
+
+
+@app.get(
+    "/users/{id:int}",
+    tool=True,
+    auth=authenticate,
+    description="Fetch one user.",
+)
+async def get_user(id: int, request: Request) -> dict[str, object]:
+    assert request.auth is not None
+    return {"id": id, "subject": request.auth.subject}
+```
+
+`mcp_auth` protects the MCP endpoint itself. Route `auth=` protects the handler.
+When both use the same function, Quater authenticates once for an MCP tool call.
 
 ## Responses
 

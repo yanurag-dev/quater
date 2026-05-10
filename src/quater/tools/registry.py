@@ -19,7 +19,7 @@ from quater.routing import ParamSegment, RoutePattern, parse_route_pattern
 from quater.serialization import dumps_json
 from quater.tools.descriptions import resolve_tool_description
 from quater.tools.schema import tool_input_schema
-from quater.typing import RequestContext
+from quater.typing import Authenticate, RequestContext
 
 
 @dataclass(slots=True, frozen=True)
@@ -35,6 +35,8 @@ class ToolDefinition:
         self,
         request: Request,
         arguments: Mapping[str, object],
+        *,
+        authenticated_by: Authenticate | None = None,
     ) -> Response:
         path_params, query_string, body = self._build_request_parts(arguments)
         tool_request = Request(
@@ -49,7 +51,9 @@ class ToolDefinition:
             max_body_size=request.max_body_size,
             context=RequestContext(source="tool", tool_name=self.name),
         )
-        if self.route.auth is not None:
+        if self.route.auth is not None and not (
+            request.auth is not None and self.route.auth is authenticated_by
+        ):
             await authenticate_request(self.route.auth, tool_request)
             request.auth = tool_request.auth
         result = await self.handler_plan.call(tool_request, path_params)

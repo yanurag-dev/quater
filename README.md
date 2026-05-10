@@ -4,9 +4,10 @@ Quater is a typed Python API framework for APIs that humans use and agents can
 safely operate.
 
 The important bit is boring in the best way: HTTP calls and tool calls use the
-same route, auth hook, middleware, body parser, error handling, and response
-serialization. If `/users/{id:int}` is protected for a browser or CLI client, the
-same protection applies when an agent calls it as a tool.
+same route, middleware, body parser, error handling, and response serialization.
+Auth stays explicit. Normal HTTP routes use route-level `auth=...`; MCP uses
+`mcp_auth` at the transport boundary, then optional route auth inside the tool
+handler.
 
 ## Working On Quater
 
@@ -71,6 +72,9 @@ These are on by default:
 - `GET /openapi.json` serves the OpenAPI document.
 - `GET /mcp/docs` shows the MCP tools you exposed.
 
+OpenAPI docs are public unless you disable them. MCP docs use `mcp_auth` when
+the app has one, which every tool-exposing app must have.
+
 Move or disable them with paths:
 
 ```python
@@ -133,7 +137,17 @@ async def me(request: Request) -> dict[str, str]:
 
 Routes are normal HTTP routes unless you opt in with `tool=True`.
 
+If an app exposes even one tool, create it with `mcp_auth`. That hook protects
+the MCP endpoint, the MCP docs page, tool discovery, and tool calls.
+
 ```python
+app = Quater(
+    mcp_docs_path="/mcp/docs",
+    mcp_allowed_origins=["http://localhost:3000"],
+    mcp_auth=authenticate,
+)
+
+
 @app.get(
     "/users/{id:int}",
     tool=True,
@@ -141,8 +155,10 @@ Routes are normal HTTP routes unless you opt in with `tool=True`.
     description="Fetch one user by id.",
 )
 async def get_user(id: int, request: Request) -> dict[str, object]:
+    assert request.auth is not None
     return {
         "id": id,
+        "subject": request.auth.subject,
         "source": request.context.source,
         "tool": request.context.tool_name,
     }
@@ -150,6 +166,16 @@ async def get_user(id: int, request: Request) -> dict[str, object]:
 
 Descriptions are required for tools. Use `description=` or a handler docstring.
 Agents need real intent metadata. A name like `get_user` is not enough.
+
+MCP lives at `POST /mcp`. The endpoint is fixed. There is no `mcp_path` option.
+
+`mcp_auth` is checked on each HTTP request. `initialize` is not a login. Clients
+must keep sending `Authorization: Bearer ...` for `initialize`, `tools/list`,
+and every `tools/call`.
+
+If `mcp_auth` and route `auth=` are the same function, Quater runs it once for a
+tool call. If they are different functions, Quater runs both. Use that when the
+MCP client token and route-level user or scope check are intentionally different.
 
 HTTP calls see:
 
@@ -163,16 +189,6 @@ MCP `tools/call` calls see:
 ```python
 request.context.source == "tool"
 request.context.tool_name == "get_user"
-```
-
-MCP lives at `POST /mcp`. The endpoint is fixed. Configure the human docs page
-and browser origins separately:
-
-```python
-app = Quater(
-    mcp_docs_path="/mcp/docs",
-    mcp_allowed_origins=["http://localhost:3000"],
-)
 ```
 
 Current MCP support: `initialize`, `notifications/initialized`, `tools/list`,

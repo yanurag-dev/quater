@@ -9,6 +9,11 @@ from quater.config import AppConfig
 from quater.exceptions import ConfigurationError
 from quater.request import Request
 from quater.response import Response
+from quater.typing import AuthContext, AuthRequest
+
+
+async def allow_mcp_auth(ctx: AuthRequest) -> AuthContext | None:
+    return AuthContext(subject="mcp")
 
 
 def test_app_config_copies_mutable_inputs() -> None:
@@ -42,7 +47,7 @@ def test_app_config_overrides_do_not_mutate_base_config() -> None:
 
 
 def test_secure_defaults_are_represented_before_enforcement_exists() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     assert app.config.debug is False
     assert app.config.security == "strict"
@@ -126,7 +131,7 @@ def test_route_metadata_can_be_registered_without_compiling_routes() -> None:
     async def handler() -> dict[str, bool]:
         return {"ok": True}
 
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
     route = app.add_route(
         "get",
         "/health",

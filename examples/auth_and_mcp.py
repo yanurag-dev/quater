@@ -19,6 +19,7 @@ async def audit_tool_call(event: ToolAuditEvent) -> None:
 
 app = Quater(
     mcp_allowed_origins=["http://localhost:3000"],
+    mcp_auth=authenticate,
     mcp_audit=audit_tool_call,
 )
 

@@ -18,7 +18,7 @@ from quater.response import (
 )
 from quater.tools.audit import AuditHook, ToolAuditEvent, sanitize_arguments
 from quater.tools.registry import ToolRegistry
-from quater.typing import RequestContext
+from quater.typing import Authenticate, RequestContext
 
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
@@ -33,12 +33,12 @@ async def mcp_request_context(request: Request) -> RequestContext:
     try:
         payload = await request.json()
     except RequestJSONError:
-        return RequestContext()
+        return RequestContext(source="mcp")
 
     if not isinstance(payload, Mapping):
-        return RequestContext()
+        return RequestContext(source="mcp")
     if payload.get("method") != "tools/call":
-        return RequestContext()
+        return RequestContext(source="mcp")
 
     params = payload.get("params")
     if not isinstance(params, Mapping):
@@ -69,6 +69,7 @@ async def handle_mcp_request(
     request: Request,
     registry: ToolRegistry,
     *,
+    transport_auth: Authenticate | None = None,
     audit_hook: AuditHook | None = None,
     debug: bool = False,
 ) -> Response:
@@ -116,6 +117,7 @@ async def handle_mcp_request(
             request_id,
             payload.get("params"),
             registry,
+            transport_auth=transport_auth,
             audit_hook=audit_hook,
             debug=debug,
         )
@@ -190,6 +192,7 @@ async def _handle_tools_call(
     params: object,
     registry: ToolRegistry,
     *,
+    transport_auth: Authenticate | None,
     audit_hook: AuditHook | None,
     debug: bool,
 ) -> Response:
@@ -207,7 +210,11 @@ async def _handle_tools_call(
 
     start = time.perf_counter()
     try:
-        response = await tool.call(request, cast(Mapping[str, object], arguments))
+        response = await tool.call(
+            request,
+            cast(Mapping[str, object], arguments),
+            authenticated_by=transport_auth,
+        )
     except BadRequestError as exc:
         await _audit(
             audit_hook,

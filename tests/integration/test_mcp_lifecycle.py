@@ -4,8 +4,12 @@ import json
 
 import pytest
 
-from quater import Quater, Request, __version__
+from quater import AuthContext, AuthRequest, Quater, Request, __version__
 from quater.tools.mcp import LATEST_PROTOCOL_VERSION
+
+
+async def allow_mcp_auth(ctx: AuthRequest) -> AuthContext | None:
+    return AuthContext(subject="mcp")
 
 
 async def mcp_post(
@@ -33,7 +37,7 @@ def require_object(value: object) -> dict[str, object]:
 
 @pytest.mark.asyncio
 async def test_initialize_negotiates_protocol_and_declares_tool_capability() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     status, _, body = await mcp_post(
         app,
@@ -46,6 +50,10 @@ async def test_initialize_negotiates_protocol_and_declares_tool_capability() -> 
                 "capabilities": {},
                 "clientInfo": {"name": "test-client", "version": "1.0.0"},
             },
+        },
+        headers={
+            "authorization": "Bearer mcp",
+            "content-type": "application/json",
         },
     )
 
@@ -99,7 +107,7 @@ async def test_initialized_notification_returns_accepted_without_body() -> None:
 
 @pytest.mark.asyncio
 async def test_cursor_style_startup_sequence_can_list_tools_after_initialize() -> None:
-    app = Quater()
+    app = Quater(mcp_auth=allow_mcp_auth)
 
     @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int) -> dict[str, int]:
@@ -117,6 +125,10 @@ async def test_cursor_style_startup_sequence_can_list_tools_after_initialize() -
                 "clientInfo": {"name": "cursor-like-client", "version": "1.0.0"},
             },
         },
+        headers={
+            "authorization": "Bearer mcp",
+            "content-type": "application/json",
+        },
     )
     initialized_status, initialized_bytes, _ = await mcp_post(
         app,
@@ -126,6 +138,7 @@ async def test_cursor_style_startup_sequence_can_list_tools_after_initialize() -
         },
         headers={
             "content-type": "application/json",
+            "authorization": "Bearer mcp",
             "mcp-protocol-version": "2025-06-18",
         },
     )
@@ -134,6 +147,7 @@ async def test_cursor_style_startup_sequence_can_list_tools_after_initialize() -
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
         headers={
             "content-type": "application/json",
+            "authorization": "Bearer mcp",
             "mcp-protocol-version": "2025-06-18",
         },
     )
