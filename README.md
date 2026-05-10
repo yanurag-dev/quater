@@ -56,6 +56,20 @@ uv run granian examples.asgi_compat:app --interface asgi
 uv run granian examples.wsgi_compat:app --interface wsgi
 ```
 
+OpenAPI documentation is enabled by default:
+
+- `GET /docs` shows the human-readable API docs.
+- `GET /openapi.json` returns the OpenAPI JSON document.
+
+Configure or disable it with:
+
+```python
+app = Quater(
+    docs_path="/docs",
+    openapi_path="/openapi.json",
+)
+```
+
 ## Route Handlers
 
 Handlers are async functions. Quater binds path params, simple query params,
@@ -147,19 +161,20 @@ request.context.source == "tool"
 request.context.tool_name == "get_user"
 ```
 
-Enable MCP with:
+MCP is available at `/mcp` by default:
 
 ```python
 app = Quater(
-    mcp_enabled=True,
+    mcp_docs_path="/mcp/docs",
     mcp_allowed_origins=["http://localhost:3000"],
 )
 ```
 
 MVP MCP support includes `POST /mcp`, JSON-RPC `initialize`,
 `notifications/initialized`, `tools/list`, and `tools/call`. Tool calls execute
-the auth hook attached to the underlying route. SSE streaming, resumability,
-sessions, prompts, resources, stdio, and server-to-client notifications are
-intentionally deferred.
+the auth hook attached to the underlying route. `GET /mcp/docs` shows a
+human-readable view of the exposed tools when MCP is enabled. SSE streaming,
+resumability, sessions, prompts, resources, stdio, and server-to-client
+notifications are intentionally deferred.
 
 More detail lives in `docs/quickstart.md`, `docs/security.md`, and `docs/mcp.md`.

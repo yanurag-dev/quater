@@ -61,6 +61,7 @@ def test_public_exports_are_intentionally_small() -> None:
         "BytesResponse",
         "EmptyResponse",
         "HTTPError",
+        "HTMLResponse",
         "JSONResponse",
         "Quater",
         "RedirectResponse",

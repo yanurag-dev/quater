@@ -13,7 +13,9 @@ async def authenticate(ctx: AuthRequest) -> AuthContext | None:
 
 
 app = Quater(
-    mcp_enabled=True,
+    docs_path="/docs",
+    openapi_path="/openapi.json",
+    mcp_docs_path="/mcp/docs",
     mcp_allowed_origins=["http://localhost:3000"],
 )
 

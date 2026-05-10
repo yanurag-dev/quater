@@ -79,6 +79,24 @@ class TextResponse(Response):
         )
 
 
+class HTMLResponse(TextResponse):
+    """UTF-8 HTML response."""
+
+    def __init__(
+        self,
+        content: str,
+        *,
+        status_code: int = 200,
+        headers: HeaderItems | Mapping[str, str] | None = None,
+    ) -> None:
+        super().__init__(
+            content,
+            status_code=status_code,
+            headers=headers,
+            content_type="text/html; charset=utf-8",
+        )
+
+
 class BytesResponse(Response):
     """Raw byte response."""
 

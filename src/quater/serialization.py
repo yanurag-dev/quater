@@ -19,6 +19,12 @@ def dumps_json(value: object) -> bytes:
     return msgspec.json.encode(value)
 
 
+def dumps_pretty_json(value: object) -> bytes:
+    """Serialize a value as indented JSON bytes."""
+
+    return msgspec.json.format(msgspec.json.encode(value), indent=2)
+
+
 def loads_json(data: bytes) -> Any:
     """Decode JSON bytes."""
 

@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+import json
+
+import msgspec
+import pytest
+
+from quater import HTMLResponse, Quater, Request
+from quater.exceptions import RouteConflictError
+from quater.typing import AuthContext, AuthRequest
+
+
+class CreateUser(msgspec.Struct):
+    name: str
+    age: int
+
+
+@pytest.mark.asyncio
+async def test_openapi_json_is_generated_by_default() -> None:
+    app = Quater(name="Users API")
+
+    @app.get("/users/{id:int}", description="Fetch one user.")
+    async def get_user(id: int, include_pets: bool = False) -> dict[str, object]:
+        return {"id": id, "include_pets": include_pets}
+
+    @app.post("/users")
+    async def create_user(user: CreateUser) -> dict[str, object]:
+        return {"name": user.name, "age": user.age}
+
+    response = await app.handle(Request(method="GET", path="/openapi.json"))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert dict(response.headers)["content-type"] == "application/json"
+    assert body["openapi"] == "3.1.1"
+    assert body["info"]["title"] == "Users API"
+    get_operation = body["paths"]["/users/{id}"]["get"]
+    assert get_operation["description"] == "Fetch one user."
+    assert get_operation["parameters"] == [
+        {
+            "name": "id",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "integer"},
+        },
+        {
+            "name": "include_pets",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "boolean"},
+        },
+    ]
+    post_operation = body["paths"]["/users"]["post"]
+    assert post_operation["requestBody"] == {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "additionalProperties": False,
+                    "required": ["name", "age"],
+                }
+            }
+        },
+        "required": True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_openapi_docs_html_uses_swagger_ui_by_default() -> None:
+    app = Quater()
+
+    @app.get("/unsafe", description="<script>alert(1)</script>")
+    async def unsafe() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = await app.handle(Request(method="GET", path="/docs"))
+    body = response.body.decode("utf-8")
+
+    assert response.status_code == 200
+    assert isinstance(response, HTMLResponse)
+    assert dict(response.headers)["content-type"] == "text/html; charset=utf-8"
+    assert "swagger-ui-bundle.js" in body
+    assert "swagger-initializer.js" in body
+    assert "/openapi.json" in body
+    assert "SwaggerUIBundle" not in body
+    assert "<script>alert(1)</script>" not in body
+
+
+@pytest.mark.asyncio
+async def test_docs_and_openapi_paths_are_configurable() -> None:
+    app = Quater(docs_path="/api-docs", openapi_path="/schema.json")
+
+    schema_response = await app.handle(Request(method="GET", path="/schema.json"))
+    docs_response = await app.handle(Request(method="GET", path="/api-docs"))
+    initializer_response = await app.handle(
+        Request(method="GET", path="/api-docs/swagger-initializer.js")
+    )
+
+    assert schema_response.status_code == 200
+    assert docs_response.status_code == 200
+    assert "/schema.json" in docs_response.body.decode("utf-8")
+    assert b'url: "/schema.json"' in initializer_response.body
+
+
+@pytest.mark.asyncio
+async def test_openapi_docs_can_be_disabled_without_disabling_schema() -> None:
+    app = Quater(docs_path=None)
+
+    docs_response = await app.handle(Request(method="GET", path="/docs"))
+    schema_response = await app.handle(Request(method="GET", path="/openapi.json"))
+
+    assert docs_response.status_code == 404
+    assert schema_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_openapi_can_be_disabled_entirely() -> None:
+    app = Quater(docs_path=None, openapi_path=None)
+
+    docs_response = await app.handle(Request(method="GET", path="/docs"))
+    schema_response = await app.handle(Request(method="GET", path="/openapi.json"))
+
+    assert docs_response.status_code == 404
+    assert schema_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_openapi_marks_route_level_auth_without_guessing_scheme() -> None:
+    async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+        return AuthContext(subject="user_1")
+
+    app = Quater()
+
+    @app.get("/private", auth=authenticate)
+    async def private() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = await app.handle(Request(method="GET", path="/openapi.json"))
+    body = json.loads(response.body)
+
+    assert body["paths"]["/private"]["get"]["x-quater-auth"] == "required"
+
+
+def test_user_routes_conflicting_with_enabled_docs_paths_are_rejected() -> None:
+    app = Quater()
+
+    @app.get("/docs")
+    async def docs() -> dict[str, bool]:
+        return {"ok": True}
+
+    with pytest.raises(RouteConflictError):
+        app.compile_routes()
+
+
+def test_user_routes_conflicting_with_openapi_json_path_are_rejected() -> None:
+    app = Quater()
+
+    @app.get("/openapi.json")
+    async def schema() -> dict[str, bool]:
+        return {"ok": True}
+
+    with pytest.raises(RouteConflictError):
+        app.compile_routes()
+
+
+def test_user_routes_conflicting_with_swagger_assets_are_rejected() -> None:
+    app = Quater()
+
+    @app.get("/docs/swagger-ui.css")
+    async def asset() -> dict[str, bool]:
+        return {"ok": True}
+
+    with pytest.raises(RouteConflictError):
+        app.compile_routes()
+
+
+@pytest.mark.asyncio
+async def test_swagger_ui_assets_are_served_from_bundle() -> None:
+    app = Quater()
+
+    css = await app.handle(Request(method="GET", path="/docs/swagger-ui.css"))
+    js = await app.handle(Request(method="GET", path="/docs/swagger-ui-bundle.js"))
+    initializer = await app.handle(
+        Request(method="GET", path="/docs/swagger-initializer.js")
+    )
+
+    assert css.status_code == 200
+    assert dict(css.headers)["content-type"] == "text/css; charset=utf-8"
+    assert b"swagger-ui" in css.body.lower()
+    assert js.status_code == 200
+    assert dict(js.headers)["content-type"] == "application/javascript; charset=utf-8"
+    assert b"SwaggerUIBundle" in js.body
+    assert b'url: "/openapi.json"' in initializer.body

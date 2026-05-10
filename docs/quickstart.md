@@ -30,6 +30,20 @@ Use hot reload while building locally:
 uv run granian examples.basic_app:app --interface rsgi --reload
 ```
 
+OpenAPI documentation is generated automatically:
+
+- `GET /docs` serves the HTML docs.
+- `GET /openapi.json` serves the OpenAPI JSON document.
+
+Set a docs path or OpenAPI path to `None` to disable that endpoint:
+
+```python
+app = Quater(
+    docs_path="/docs",
+    openapi_path="/openapi.json",
+)
+```
+
 RSGI is the primary path because it maps directly to Granian's fast Python
 interface. ASGI and WSGI are compatibility paths that still call the same
 `Quater.handle()` core.

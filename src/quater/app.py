@@ -6,7 +6,14 @@ from collections.abc import Awaitable, Callable, Iterable
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from quater.auth import authenticate_request
-from quater.config import AppConfig, MaxBodySize, SecurityMode
+from quater.config import (
+    _UNSET,
+    AppConfig,
+    MaxBodySize,
+    SecurityMode,
+    _Unset,
+    docs_asset_paths,
+)
 from quater.core import Handler, RouteDefinition
 from quater.cors import CORSConfig, add_cors_headers, is_cors_preflight
 from quater.exceptions import MiddlewareStateError
@@ -21,7 +28,7 @@ from quater.middleware import (
     default_exception_response,
 )
 from quater.request import Request
-from quater.response import EmptyResponse, Response
+from quater.response import EmptyResponse, HTMLResponse, JSONResponse, Response
 from quater.router import Router
 from quater.security import (
     RequestSecurityContext,
@@ -36,6 +43,7 @@ from quater.tools.descriptions import (
 from quater.typing import Authenticate, LifespanHook
 
 HandlerT = TypeVar("HandlerT", bound=Handler)
+MCP_PATH = "/mcp"
 
 
 if TYPE_CHECKING:
@@ -62,6 +70,7 @@ class Quater:
         "_asgi_adapter",
         "_lifespan",
         "_middleware",
+        "_openapi_schema",
         "_rsgi_adapter",
         "_router",
         "_routes",
@@ -82,10 +91,11 @@ class Quater:
         max_body_size: MaxBodySize | None = None,
         cors: CORSConfig | None = None,
         content_security_policy: str | None = None,
-        mcp_enabled: bool | None = None,
-        mcp_path: str | None = None,
+        mcp_docs_path: str | None | _Unset = _UNSET,
         mcp_allowed_origins: Iterable[str] | None = None,
         mcp_audit: AuditHook | None = None,
+        docs_path: str | None | _Unset = _UNSET,
+        openapi_path: str | None | _Unset = _UNSET,
     ) -> None:
         self.name = name
         self.config = (config or AppConfig()).with_overrides(
@@ -96,14 +106,16 @@ class Quater:
             max_body_size=max_body_size,
             cors=cors,
             content_security_policy=content_security_policy,
-            mcp_enabled=mcp_enabled,
-            mcp_path=mcp_path,
+            docs_path=docs_path,
+            openapi_path=openapi_path,
+            mcp_docs_path=mcp_docs_path,
             mcp_allowed_origins=mcp_allowed_origins,
         )
         self.mcp_audit = mcp_audit
         self._asgi_adapter: ASGIAdapter | None = None
         self._lifespan = LifespanManager()
         self._middleware = MiddlewareStack()
+        self._openapi_schema: dict[str, object] | None = None
         self._rsgi_adapter: RSGIAdapter | None = None
         self._routes: list[RouteDefinition] = []
         self._router: Router | None = None
@@ -250,6 +262,7 @@ class Quater:
             ),
         )
         self._routes.append(route)
+        self._openapi_schema = None
         self._tool_registry = None
         self._routes_dirty = True
         return route
@@ -434,14 +447,13 @@ class Quater:
         """Compile route definitions into a dispatcher."""
 
         self._router = Router.compile(
-            tuple(self._routes),
+            (*self._routes, *self._builtin_routes()),
             middleware=self._middleware,
             debug=self.config.debug,
         )
-        if self.config.mcp_enabled:
-            from quater.tools.registry import build_tool_registry
+        from quater.tools.registry import build_tool_registry
 
-            self._tool_registry = build_tool_registry(tuple(self._routes))
+        self._tool_registry = build_tool_registry(tuple(self._routes))
         self._routes_dirty = False
         return self._router
 
@@ -529,9 +541,7 @@ class Quater:
 
     async def _handle_request(self, request: Request) -> Response:
         context = resolve_request_security_context(request, self.config)
-        is_mcp_request = (
-            self.config.mcp_enabled and request.path == self.config.mcp_path
-        )
+        is_mcp_request = request.path == MCP_PATH
         try:
             context = prepare_request_security(request, self.config)
             if self.config.cors is not None and is_cors_preflight(request):
@@ -574,6 +584,129 @@ class Quater:
 
             self._tool_registry = build_tool_registry(tuple(self._routes))
         return self._tool_registry
+
+    def _builtin_routes(self) -> tuple[RouteDefinition, ...]:
+        routes: list[RouteDefinition] = []
+        if self.config.openapi_path is not None:
+            routes.append(
+                RouteDefinition(
+                    method="GET",
+                    path=self.config.openapi_path,
+                    handler=self._openapi_json,
+                    name="quater_openapi_json",
+                    metadata={"include_in_openapi": False},
+                )
+            )
+        if self.config.docs_path is not None:
+            routes.append(
+                RouteDefinition(
+                    method="GET",
+                    path=self.config.docs_path,
+                    handler=self._openapi_docs,
+                    name="quater_openapi_docs",
+                    metadata={"include_in_openapi": False},
+                )
+            )
+            asset_paths = docs_asset_paths(self.config.docs_path)
+            for asset_name, handler in self._swagger_ui_asset_handlers().items():
+                routes.append(
+                    RouteDefinition(
+                        method="GET",
+                        path=asset_paths[asset_name],
+                        handler=handler,
+                        name=f"quater_docs_{asset_name.replace('-', '_')}",
+                        metadata={"include_in_openapi": False},
+                    )
+                )
+        if self.config.mcp_docs_path is not None:
+            routes.append(
+                RouteDefinition(
+                    method="GET",
+                    path=self.config.mcp_docs_path,
+                    handler=self._mcp_docs,
+                    name="quater_mcp_docs",
+                    metadata={"include_in_openapi": False},
+                )
+            )
+        return tuple(routes)
+
+    async def _openapi_json(self) -> JSONResponse:
+        return JSONResponse(self._openapi_schema_document())
+
+    async def _openapi_docs(self) -> HTMLResponse:
+        from quater.docs.html import DOCS_CSP, render_openapi_docs
+
+        openapi_path = self.config.openapi_path
+        if openapi_path is None:
+            raise RuntimeError("OpenAPI docs require an OpenAPI path")
+
+        return HTMLResponse(
+            render_openapi_docs(
+                openapi_json_path=openapi_path,
+                swagger_ui_base_path=self.config.docs_path or "",
+            ),
+            headers={"content-security-policy": DOCS_CSP},
+        )
+
+    async def _swagger_ui_css(self) -> Response:
+        from quater.docs.swagger import swagger_ui_asset_response
+
+        return swagger_ui_asset_response("swagger-ui.css")
+
+    async def _swagger_ui_bundle_js(self) -> Response:
+        from quater.docs.swagger import swagger_ui_asset_response
+
+        return swagger_ui_asset_response("swagger-ui-bundle.js")
+
+    async def _swagger_ui_standalone_preset_js(self) -> Response:
+        from quater.docs.swagger import swagger_ui_asset_response
+
+        return swagger_ui_asset_response("swagger-ui-standalone-preset.js")
+
+    async def _swagger_ui_initializer_js(self) -> Response:
+        from quater.docs.swagger import swagger_ui_initializer_response
+
+        openapi_path = self.config.openapi_path
+        if openapi_path is None:
+            raise RuntimeError("Swagger UI initializer requires an OpenAPI path")
+        return swagger_ui_initializer_response(openapi_path)
+
+    async def _swagger_ui_favicon(self) -> Response:
+        from quater.docs.swagger import swagger_ui_asset_response
+
+        return swagger_ui_asset_response("favicon-32x32.png")
+
+    def _swagger_ui_asset_handlers(self) -> dict[str, Handler]:
+        return {
+            "swagger-ui.css": self._swagger_ui_css,
+            "swagger-ui-bundle.js": self._swagger_ui_bundle_js,
+            "swagger-ui-standalone-preset.js": self._swagger_ui_standalone_preset_js,
+            "swagger-initializer.js": self._swagger_ui_initializer_js,
+            "favicon-32x32.png": self._swagger_ui_favicon,
+        }
+
+    async def _mcp_docs(self) -> HTMLResponse:
+        from quater.docs.html import DOCS_CSP, render_mcp_docs
+
+        return HTMLResponse(
+            render_mcp_docs(
+                self._compiled_tool_registry(),
+                mcp_endpoint=MCP_PATH,
+            ),
+            headers={"content-security-policy": DOCS_CSP},
+        )
+
+    def _openapi_schema_document(self) -> dict[str, object]:
+        if self._openapi_schema is None:
+            from quater import __version__
+            from quater.docs.openapi import build_openapi_schema
+
+            self._openapi_schema = build_openapi_schema(
+                tuple(self._routes),
+                title=self.name or "Quater API",
+                version=__version__,
+            )
+        return self._openapi_schema
 
     def _ensure_middleware_mutable(self) -> None:
         if self._router is not None:

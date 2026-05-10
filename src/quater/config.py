@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from ipaddress import ip_network
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, cast
 
 from quater.cors import CORSConfig
 from quater.exceptions import ConfigurationError
@@ -20,6 +20,21 @@ _SIZE_UNITS = {
     "gb": 1024 * 1024 * 1024,
 }
 
+_DOCS_ASSETS = (
+    "swagger-ui.css",
+    "swagger-ui-bundle.js",
+    "swagger-ui-standalone-preset.js",
+    "swagger-initializer.js",
+    "favicon-32x32.png",
+)
+
+
+class _Unset:
+    __slots__ = ()
+
+
+_UNSET = _Unset()
+
 
 @dataclass(slots=True, frozen=True)
 class AppConfig:
@@ -32,8 +47,9 @@ class AppConfig:
     max_body_size: int = 2 * 1024 * 1024
     cors: CORSConfig | None = None
     content_security_policy: str | None = None
-    mcp_enabled: bool = False
-    mcp_path: str = "/mcp"
+    docs_path: str | None = "/docs"
+    openapi_path: str | None = "/openapi.json"
+    mcp_docs_path: str | None = "/mcp/docs"
     mcp_allowed_origins: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -50,12 +66,12 @@ class AppConfig:
             and not self.content_security_policy.strip()
         ):
             raise ConfigurationError("content_security_policy must not be empty")
-        if not self.mcp_path.startswith("/"):
-            raise ConfigurationError("mcp_path must start with '/'")
-        if "?" in self.mcp_path or "#" in self.mcp_path:
-            raise ConfigurationError(
-                "mcp_path must not include query strings or fragments"
-            )
+        _validate_optional_path(self.docs_path, "docs_path")
+        _validate_optional_path(self.openapi_path, "openapi_path")
+        _validate_optional_path(self.mcp_docs_path, "mcp_docs_path")
+        if self.docs_path is not None and self.openapi_path is None:
+            raise ConfigurationError("docs_path requires openapi_path")
+        self._validate_reserved_paths()
 
     def with_overrides(
         self,
@@ -67,8 +83,9 @@ class AppConfig:
         max_body_size: MaxBodySize | None = None,
         cors: CORSConfig | None = None,
         content_security_policy: str | None = None,
-        mcp_enabled: bool | None = None,
-        mcp_path: str | None = None,
+        docs_path: str | None | _Unset = _UNSET,
+        openapi_path: str | None | _Unset = _UNSET,
+        mcp_docs_path: str | None | _Unset = _UNSET,
         mcp_allowed_origins: Iterable[str] | None = None,
     ) -> AppConfig:
         """Return a new config with explicit overrides applied."""
@@ -98,8 +115,9 @@ class AppConfig:
                 if content_security_policy is None
                 else content_security_policy
             ),
-            mcp_enabled=self.mcp_enabled if mcp_enabled is None else mcp_enabled,
-            mcp_path=self.mcp_path if mcp_path is None else mcp_path,
+            docs_path=_override_path(self.docs_path, docs_path),
+            openapi_path=_override_path(self.openapi_path, openapi_path),
+            mcp_docs_path=_override_path(self.mcp_docs_path, mcp_docs_path),
             mcp_allowed_origins=(
                 self.mcp_allowed_origins
                 if mcp_allowed_origins is None
@@ -109,6 +127,26 @@ class AppConfig:
                 )
             ),
         )
+
+    def _validate_reserved_paths(self) -> None:
+        enabled_paths: dict[str, str] = {}
+        if self.openapi_path is not None:
+            enabled_paths["openapi_path"] = self.openapi_path
+        if self.docs_path is not None:
+            enabled_paths["docs_path"] = self.docs_path
+            for asset_name, path in docs_asset_paths(self.docs_path).items():
+                enabled_paths[f"docs asset {asset_name}"] = path
+        enabled_paths["mcp_endpoint"] = "/mcp"
+        if self.mcp_docs_path is not None:
+            enabled_paths["mcp_docs_path"] = self.mcp_docs_path
+
+        seen: dict[str, str] = {}
+        for field_name, path in enabled_paths.items():
+            if path in seen:
+                raise ConfigurationError(
+                    f"{field_name} conflicts with {seen[path]}: {path!r}"
+                )
+            seen[path] = field_name
 
 
 def parse_size(value: MaxBodySize, *, field_name: str) -> int:
@@ -139,6 +177,40 @@ def _normalize_string_tuple(values: Iterable[str], field_name: str) -> tuple[str
     if any(not value for value in normalized):
         raise ConfigurationError(f"{field_name} cannot contain empty values")
     return normalized
+
+
+def _override_path(
+    current: str | None,
+    value: str | None | _Unset,
+) -> str | None:
+    if value is _UNSET:
+        return current
+    return cast(str | None, value)
+
+
+def _validate_path(value: str, field_name: str) -> None:
+    if not value.startswith("/"):
+        raise ConfigurationError(f"{field_name} must start with '/'")
+    if "?" in value or "#" in value:
+        raise ConfigurationError(
+            f"{field_name} must not include query strings or fragments"
+        )
+
+
+def _validate_optional_path(value: str | None, field_name: str) -> None:
+    if value is not None:
+        _validate_path(value, field_name)
+
+
+def docs_asset_paths(docs_path: str) -> dict[str, str]:
+    return {asset_name: join_path(docs_path, asset_name) for asset_name in _DOCS_ASSETS}
+
+
+def join_path(base_path: str, child: str) -> str:
+    base = base_path.rstrip("/")
+    if not base:
+        return f"/{child}"
+    return f"{base}/{child}"
 
 
 def _is_valid_ip_network(value: str) -> bool:

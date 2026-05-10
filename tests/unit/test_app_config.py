@@ -51,8 +51,9 @@ def test_secure_defaults_are_represented_before_enforcement_exists() -> None:
     assert app.config.max_body_size == 2 * 1024 * 1024
     assert app.config.cors is None
     assert app.config.content_security_policy is None
-    assert app.config.mcp_enabled is False
-    assert app.config.mcp_path == "/mcp"
+    assert app.config.docs_path == "/docs"
+    assert app.config.openapi_path == "/openapi.json"
+    assert app.config.mcp_docs_path == "/mcp/docs"
     assert app.config.mcp_allowed_origins == ()
 
 
@@ -62,10 +63,41 @@ def test_invalid_body_size_strings_fail_early(value: str) -> None:
         Quater(max_body_size=value)
 
 
-@pytest.mark.parametrize("path", ["mcp", "/mcp?debug=true", "/mcp#tools"])
-def test_invalid_mcp_paths_fail_early(path: str) -> None:
+@pytest.mark.parametrize(
+    ("field_name", "path"),
+    (
+        ("docs_path", "/docs?debug=true"),
+        ("openapi_path", "openapi.json"),
+        ("mcp_docs_path", "/mcp/docs#tools"),
+    ),
+)
+def test_invalid_documentation_paths_fail_early(
+    field_name: str,
+    path: str,
+) -> None:
+    with pytest.raises(ConfigurationError, match=field_name):
+        if field_name == "docs_path":
+            Quater(docs_path=path)
+        elif field_name == "openapi_path":
+            Quater(openapi_path=path)
+        else:
+            Quater(mcp_docs_path=path)
+
+
+def test_docs_path_requires_openapi_path() -> None:
+    with pytest.raises(ConfigurationError, match="docs_path requires openapi_path"):
+        Quater(openapi_path=None)
+
+
+def test_enabled_builtin_paths_must_be_distinct() -> None:
     with pytest.raises(ConfigurationError):
-        Quater(mcp_path=path)
+        Quater(docs_path="/mcp")
+
+    with pytest.raises(ConfigurationError):
+        Quater(docs_path="/openapi.json")
+
+    with pytest.raises(ConfigurationError):
+        Quater(mcp_docs_path="/mcp")
 
 
 def test_trusted_proxies_must_be_ip_addresses_or_networks() -> None:

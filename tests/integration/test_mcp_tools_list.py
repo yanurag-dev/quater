@@ -29,7 +29,7 @@ def require_object(value: object) -> dict[str, object]:
 
 @pytest.mark.asyncio
 async def test_tools_list_exposes_only_tool_routes() -> None:
-    app = Quater(mcp_enabled=True)
+    app = Quater()
 
     @app.get("/internal")
     async def internal() -> dict[str, bool]:
@@ -66,22 +66,8 @@ async def test_tools_list_exposes_only_tool_routes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mcp_path_is_not_available_until_enabled() -> None:
-    response = await Quater().handle(
-        Request(
-            method="POST",
-            path="/mcp",
-            headers={"content-type": "application/json"},
-            body=b'{"jsonrpc":"2.0","id":1,"method":"tools/list"}',
-        )
-    )
-
-    assert response.status_code == 404
-
-
-@pytest.mark.asyncio
 async def test_mcp_get_returns_method_not_allowed_when_enabled() -> None:
-    response = await Quater(mcp_enabled=True).handle(Request(method="GET", path="/mcp"))
+    response = await Quater().handle(Request(method="GET", path="/mcp"))
 
     assert response.status_code == 405
     assert dict(response.headers)["allow"] == "POST"

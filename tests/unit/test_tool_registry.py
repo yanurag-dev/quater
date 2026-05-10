@@ -96,8 +96,8 @@ def test_duplicate_tool_names_fail_when_registry_is_built() -> None:
         build_tool_registry(app.routes)
 
 
-def test_mcp_enabled_app_builds_tool_registry_during_route_compile() -> None:
-    app = Quater(mcp_enabled=True)
+def test_app_builds_tool_registry_during_route_compile() -> None:
+    app = Quater()
 
     @app.get("/items/{id:int}", tool=True, description="Fetch one item.")
     async def get_item(id: int) -> dict[str, int]:

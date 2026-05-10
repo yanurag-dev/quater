@@ -33,7 +33,7 @@ def require_object(value: object) -> dict[str, object]:
 
 @pytest.mark.asyncio
 async def test_initialize_negotiates_protocol_and_declares_tool_capability() -> None:
-    app = Quater(mcp_enabled=True)
+    app = Quater()
 
     status, _, body = await mcp_post(
         app,
@@ -64,7 +64,7 @@ async def test_initialize_negotiates_protocol_and_declares_tool_capability() -> 
 @pytest.mark.asyncio
 async def test_initialize_falls_back_to_latest_supported_protocol() -> None:
     status, _, body = await mcp_post(
-        Quater(mcp_enabled=True),
+        Quater(),
         {
             "jsonrpc": "2.0",
             "id": "init-1",
@@ -85,7 +85,7 @@ async def test_initialize_falls_back_to_latest_supported_protocol() -> None:
 @pytest.mark.asyncio
 async def test_initialized_notification_returns_accepted_without_body() -> None:
     status, body_bytes, body = await mcp_post(
-        Quater(mcp_enabled=True),
+        Quater(),
         {
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
@@ -99,7 +99,7 @@ async def test_initialized_notification_returns_accepted_without_body() -> None:
 
 @pytest.mark.asyncio
 async def test_cursor_style_startup_sequence_can_list_tools_after_initialize() -> None:
-    app = Quater(mcp_enabled=True)
+    app = Quater()
 
     @app.get("/users/{id:int}", tool=True, description="Fetch one user.")
     async def get_user(id: int) -> dict[str, int]:
@@ -176,7 +176,7 @@ async def test_initialize_with_invalid_params_returns_json_rpc_error() -> None:
 
     for params in invalid_params:
         status, _, body = await mcp_post(
-            Quater(mcp_enabled=True),
+            Quater(),
             {
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -192,7 +192,7 @@ async def test_initialize_with_invalid_params_returns_json_rpc_error() -> None:
 @pytest.mark.asyncio
 async def test_request_methods_require_json_rpc_id() -> None:
     status, _, body = await mcp_post(
-        Quater(mcp_enabled=True),
+        Quater(),
         {"jsonrpc": "2.0", "method": "tools/list"},
     )
 
@@ -202,7 +202,7 @@ async def test_request_methods_require_json_rpc_id() -> None:
 
 @pytest.mark.asyncio
 async def test_unsupported_protocol_version_header_is_rejected() -> None:
-    response = await Quater(mcp_enabled=True).handle(
+    response = await Quater().handle(
         Request(
             method="POST",
             path="/mcp",

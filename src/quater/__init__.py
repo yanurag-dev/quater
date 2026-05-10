@@ -6,6 +6,7 @@ from quater.request import Request
 from quater.response import (
     BytesResponse,
     EmptyResponse,
+    HTMLResponse,
     JSONResponse,
     RedirectResponse,
     Response,
@@ -22,6 +23,7 @@ __all__ = [
     "BytesResponse",
     "EmptyResponse",
     "HTTPError",
+    "HTMLResponse",
     "JSONResponse",
     "Quater",
     "RedirectResponse",

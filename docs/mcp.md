@@ -3,18 +3,19 @@
 Quater exposes selected routes as MCP tools through the same app that serves
 normal HTTP APIs.
 
-## Enable MCP
+## Configure MCP
 
 ```python
 from quater import Quater
 
 app = Quater(
-    mcp_enabled=True,
+    mcp_docs_path="/mcp/docs",
     mcp_allowed_origins=["http://localhost:3000"],
 )
 ```
 
-The endpoint defaults to `/mcp`.
+The JSON-RPC endpoint defaults to `/mcp`. The human-readable MCP tool docs
+default to `/mcp/docs`. Set `mcp_docs_path=None` to disable the docs UI.
 
 ## Expose A Tool
 
@@ -136,6 +137,20 @@ async def get_user(id: int, request: Request) -> dict[str, object]:
 Quater generates `inputSchema` from path parameters, query parameters, and one
 JSON body parameter. Required fields follow the handler signature and body model.
 
+## Tool Docs
+
+`tools/list` is the machine-readable tool catalog for MCP clients. For humans,
+Quater also serves `GET /mcp/docs` by default when MCP is enabled. The page is
+rendered from the same `ToolRegistry` data as `tools/list`, so tool names,
+descriptions, input schemas, auth visibility, and example `tools/call` payloads
+stay in sync.
+
+Disable or move it with:
+
+```python
+app = Quater(mcp_docs_path=None)
+```
+
 ## Auditing
 
 Pass `mcp_audit` to receive sanitized tool-call events:
@@ -148,7 +163,7 @@ async def audit(event: ToolAuditEvent) -> None:
     print(event.tool_name, event.subject, event.success)
 
 
-app = Quater(mcp_enabled=True, mcp_audit=audit)
+app = Quater(mcp_audit=audit)
 ```
 
 Arguments are redacted before they reach the audit hook.
@@ -161,6 +176,7 @@ Arguments are redacted before they reach the audit hook.
 - `notifications/initialized`
 - `tools/list`
 - `tools/call`
+- `GET /mcp/docs`
 - auth parity with HTTP
 - origin validation
 - protocol version header validation

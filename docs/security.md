@@ -97,12 +97,29 @@ CORS is configured, Quater uses the CORS allowed origins for MCP too.
 
 ```python
 app = Quater(
-    mcp_enabled=True,
     mcp_allowed_origins=["https://app.example.com"],
 )
 ```
 
 Invalid MCP origins are rejected before auth and before tool lookup.
+
+## Documentation Endpoints
+
+OpenAPI docs are enabled by default at `/docs`, with JSON at `/openapi.json`.
+Disable both with:
+
+```python
+app = Quater(docs_path=None, openapi_path=None)
+```
+
+MCP docs are enabled by default at `/mcp/docs`. Disable or move them with:
+
+```python
+app = Quater(mcp_docs_path=None)
+```
+
+Documentation pages expose route and tool metadata by design. Disable them in
+deployments where that metadata should not be public.
 
 ## Signed Cookies
 

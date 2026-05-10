@@ -21,7 +21,6 @@ async def audit(event: ToolAuditEvent) -> None:
 
 
 app = Quater(
-    mcp_enabled=True,
     mcp_allowed_origins=["https://app.example.com"],
     mcp_audit=audit,
 )
@@ -36,4 +35,7 @@ registry = build_tool_registry(app.routes)
 
 assert_type(app.mcp_audit, AuditHook | None)
 assert_type(app.config.mcp_allowed_origins, tuple[str, ...])
+assert_type(app.config.docs_path, str | None)
+assert_type(app.config.openapi_path, str | None)
+assert_type(app.config.mcp_docs_path, str | None)
 assert_type(registry, ToolRegistry)
