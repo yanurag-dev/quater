@@ -30,7 +30,7 @@ class AuthRequest:
 
     method: str
     path: str
-    headers: Mapping[str, str] = _empty_str_map()
+    headers: Mapping[str, str] = field(default_factory=_empty_str_map)
     context: RequestContext = field(default_factory=RequestContext)
 
 
@@ -39,7 +39,7 @@ class AuthContext:
     """Authenticated subject information returned by a user auth hook."""
 
     subject: str
-    metadata: Mapping[str, object] = _empty_metadata()
+    metadata: Mapping[str, object] = field(default_factory=_empty_metadata)
 
 
 Authenticate: TypeAlias = Callable[[AuthRequest], Awaitable[AuthContext | None]]
