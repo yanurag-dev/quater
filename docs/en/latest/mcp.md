@@ -267,29 +267,3 @@ app = Quater(
 ```
 
 Arguments are redacted before they reach the hook.
-
-## Implemented Now
-
-- `POST /mcp`
-- JSON-RPC request/response
-- `initialize`
-- `notifications/initialized`
-- `tools/list`
-- `tools/call`
-- `GET /mcp/docs`
-- MCP transport auth with `mcp_auth`
-- route-level auth inside tool calls
-- origin validation
-- protocol version header validation
-- audit hook support
-
-## Not Yet
-
-- SSE streaming
-- resumability
-- sessions
-- server-to-client notifications
-- prompts
-- resources
-- stdio transport
-- full MCP SDK adapter

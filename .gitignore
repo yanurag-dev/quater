@@ -13,6 +13,9 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .uv-cache/
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 
 # Virtual environments
 .venv/

@@ -233,7 +233,7 @@ def _page(
         "font-weight:800;color:white;background:#4b5563}"
         ".method.get{background:#059669}.method.post{background:#2563eb}"
         ".method.put{background:#7c3aed}.method.patch{background:#d97706}"
-        ".method.delete{background:#dc2626}.method.tool{background:#0f766e}"
+        ".method.delete{background:#dc2626}.method.tool{background:#ED4B2F}"
         "code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"
         "'Liberation Mono','Courier New',monospace}"
         "pre{overflow:auto;border-radius:8px;background:#111827;color:#f9fafb;"

@@ -21,6 +21,20 @@ uv run ruff check .
 uv build
 ```
 
+The documentation site uses VitePress:
+
+```bash
+npm install
+npm run docs:dev
+npm run docs:build
+```
+
+Release docs can be snapshotted before publishing:
+
+```bash
+npm run docs:snapshot -- 0.1
+```
+
 ## Small App
 
 ```python
@@ -214,11 +228,12 @@ from quater import (
 )
 ```
 
-The frozen surface is listed in [docs/api.md](docs/api.md).
+The frozen surface is listed in
+[docs/en/latest/api.md](docs/en/latest/api.md).
 
 More detail:
 
-- [Quickstart](docs/quickstart.md)
-- [Public API](docs/api.md)
-- [Security](docs/security.md)
-- [MCP](docs/mcp.md)
+- [Quickstart](docs/en/latest/quickstart.md)
+- [Public API](docs/en/latest/api.md)
+- [Security](docs/en/latest/security.md)
+- [MCP](docs/en/latest/mcp.md)
