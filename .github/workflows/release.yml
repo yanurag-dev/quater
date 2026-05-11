@@ -89,7 +89,7 @@ jobs:
         run: uv build --sdist --out-dir dist
 
       - name: Upload source distribution
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*
@@ -117,7 +117,7 @@ jobs:
           sccache: "true"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-linux-${{ matrix.target }}
           path: dist/*
@@ -144,7 +144,7 @@ jobs:
           sccache: "true"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-macos-${{ matrix.target }}
           path: dist/*
@@ -165,7 +165,7 @@ jobs:
           sccache: "true"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-windows-x64
           path: dist/*
@@ -204,7 +204,7 @@ jobs:
         run: uv run --no-sync twine check dist/*
 
       - name: Upload checked distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/*
