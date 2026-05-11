@@ -21,6 +21,14 @@ uv run ruff check .
 uv build
 ```
 
+Release artifact checks need the release group too:
+
+```bash
+uv sync --group dev --group release
+uv build
+uv run twine check dist/*
+```
+
 The documentation site uses VitePress:
 
 ```bash

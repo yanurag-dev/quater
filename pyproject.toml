@@ -16,10 +16,13 @@ keywords = ["api", "async", "granian", "rsgi", "mcp"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
   "Typing :: Typed",
 ]
 dependencies = [
@@ -27,6 +30,11 @@ dependencies = [
   "msgspec>=0.18",
   "swagger-ui-bundle>=1.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/DevilsAutumn/quater"
+Repository = "https://github.com/DevilsAutumn/quater"
+Issues = "https://github.com/DevilsAutumn/quater/issues"
 
 [dependency-groups]
 dev = [
@@ -37,6 +45,12 @@ dev = [
   "pytest-asyncio>=0.23",
   "ruff>=0.6",
 ]
+release = [
+  "twine>=6.0",
+]
+
+[tool.uv]
+required-version = ">=0.7.8"
 
 [tool.maturin]
 python-source = "src"

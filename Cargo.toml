@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "Native route matcher for Quater."
 license = "MIT"
+homepage = "https://github.com/DevilsAutumn/quater"
+repository = "https://github.com/DevilsAutumn/quater"
 
 [lib]
 name = "quater_router"
