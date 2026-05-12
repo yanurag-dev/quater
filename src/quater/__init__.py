@@ -17,12 +17,14 @@ from quater.response import (
     TextResponse,
 )
 from quater.tools.audit import ToolAuditEvent
-from quater.typing import AuthContext, AuthRequest
+from quater.typing import ActionApproval, ApprovalRequest, AuthContext, AuthRequest
 
-__version__ = "0.1.0"
+__version__ = "0.1.0a1"
 
 __all__ = [
+    "ActionApproval",
     "AppConfig",
+    "ApprovalRequest",
     "AuthContext",
     "AuthRequest",
     "BytesResponse",

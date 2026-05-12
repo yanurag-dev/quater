@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
+from quater.actions.approval import ApprovalDeniedError, ApprovalRequiredError
+from quater.actions.descriptions import resolve_action_description
+from quater.actions.executor import execute_action, preflight_action
 from quater.auth import authenticate_request
 from quater.config import (
     _UNSET,
@@ -16,7 +19,13 @@ from quater.config import (
 )
 from quater.core import Handler, RouteDefinition
 from quater.cors import CORSConfig, add_cors_headers, is_cors_preflight
-from quater.exceptions import ConfigurationError, MiddlewareStateError
+from quater.exceptions import (
+    BadRequestError,
+    ConfigurationError,
+    HTTPError,
+    MiddlewareStateError,
+    RequestJSONError,
+)
 from quater.lifespan import LifespanManager
 from quater.middleware import (
     AfterMiddleware,
@@ -26,6 +35,13 @@ from quater.middleware import (
     ExceptionMiddleware,
     MiddlewareStack,
     default_exception_response,
+)
+from quater.protocol.actions import (
+    ACTIONS_MANIFEST_PATH,
+    ACTIONS_RPC_PATH,
+    action_manifest,
+    preflight_payload,
+    response_payload,
 )
 from quater.request import Request
 from quater.response import EmptyResponse, HTMLResponse, JSONResponse, Response
@@ -40,14 +56,17 @@ from quater.tools.descriptions import (
     normalize_route_description,
     resolve_tool_description,
 )
-from quater.typing import Authenticate, LifespanHook
+from quater.typing import ActionApproval, Authenticate, LifespanHook, RequestContext
 
 HandlerT = TypeVar("HandlerT", bound=Handler)
 MCP_PATH = "/mcp"
 MCP_AUTH_REQUIRED_MESSAGE = "MCP tools require mcp_auth"
+CLI_AUTH_REQUIRED_MESSAGE = "CLI actions require cli_auth"
+ACTION_APPROVAL_REQUIRED_MESSAGE = "Approval-required actions require action_approval"
 
 
 if TYPE_CHECKING:
+    from quater.actions.registry import ActionRegistry
     from quater.adapters.asgi import ASGIAdapter, ASGIReceive, ASGIScope, ASGISend
     from quater.adapters.rsgi import (
         RSGIAdapter,
@@ -65,10 +84,13 @@ class Quater:
     """Central Quater application object."""
 
     __slots__ = (
+        "action_approval",
+        "cli_auth",
         "config",
         "mcp_audit",
         "mcp_auth",
         "name",
+        "_action_registry",
         "_asgi_adapter",
         "_lifespan",
         "_middleware",
@@ -97,6 +119,8 @@ class Quater:
         mcp_allowed_origins: Iterable[str] | None = None,
         mcp_auth: Authenticate | None = None,
         mcp_audit: AuditHook | None = None,
+        cli_auth: Authenticate | None = None,
+        action_approval: ActionApproval | None = None,
         docs_path: str | None | _Unset = _UNSET,
         openapi_path: str | None | _Unset = _UNSET,
     ) -> None:
@@ -114,8 +138,11 @@ class Quater:
             mcp_docs_path=mcp_docs_path,
             mcp_allowed_origins=mcp_allowed_origins,
         )
+        self.action_approval = action_approval
+        self.cli_auth = cli_auth
         self.mcp_audit = mcp_audit
         self.mcp_auth = mcp_auth
+        self._action_registry: ActionRegistry | None = None
         self._asgi_adapter: ASGIAdapter | None = None
         self._lifespan = LifespanManager()
         self._middleware = MiddlewareStack()
@@ -228,6 +255,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -243,13 +272,19 @@ class Quater:
             route_name = (
                 discovered_name if isinstance(discovered_name, str) else "anonymous"
             )
-        route_description = (
-            resolve_tool_description(route_name, description, handler)
-            if tool
-            else normalize_route_description(description)
+        route_description = self._resolve_route_description(
+            route_name,
+            description,
+            handler,
+            tool=tool,
+            cli=cli,
         )
-        if tool and self.mcp_auth is None:
-            raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
+        self._validate_route_exposure(
+            route_name,
+            tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
+        )
 
         route = RouteDefinition(
             method=method.upper(),
@@ -258,6 +293,8 @@ class Quater:
             name=route_name,
             description=route_description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=dict(metadata or {}),
             middleware=MiddlewareStack.from_parts(
@@ -268,6 +305,7 @@ class Quater:
             ),
         )
         self._routes.append(route)
+        self._action_registry = None
         self._openapi_schema = None
         self._tool_registry = None
         self._routes_dirty = True
@@ -281,6 +319,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -298,6 +338,8 @@ class Quater:
                 name=name,
                 description=description,
                 tool=tool,
+                cli=cli,
+                needs_approval=needs_approval,
                 auth=auth,
                 metadata=metadata,
                 before=before,
@@ -316,6 +358,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -329,6 +373,8 @@ class Quater:
             name=name,
             description=description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=metadata,
             before=before,
@@ -344,6 +390,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -357,6 +405,8 @@ class Quater:
             name=name,
             description=description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=metadata,
             before=before,
@@ -372,6 +422,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -385,6 +437,8 @@ class Quater:
             name=name,
             description=description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=metadata,
             before=before,
@@ -400,6 +454,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -413,6 +469,8 @@ class Quater:
             name=name,
             description=description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=metadata,
             before=before,
@@ -428,6 +486,8 @@ class Quater:
         name: str | None = None,
         description: str | None = None,
         tool: bool = False,
+        cli: bool = False,
+        needs_approval: bool = False,
         auth: Authenticate | None = None,
         metadata: dict[str, Any] | None = None,
         before: Iterable[BeforeMiddleware] = (),
@@ -441,6 +501,8 @@ class Quater:
             name=name,
             description=description,
             tool=tool,
+            cli=cli,
+            needs_approval=needs_approval,
             auth=auth,
             metadata=metadata,
             before=before,
@@ -462,6 +524,10 @@ class Quater:
         self._tool_registry = build_tool_registry(tuple(self._routes))
         if self._tool_registry.tools and self.mcp_auth is None:
             raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
+        from quater.actions.registry import build_action_registry
+
+        self._action_registry = build_action_registry(tuple(self._routes))
+        self._validate_action_registry_security(self._action_registry)
         self._routes_dirty = False
         return self._router
 
@@ -565,6 +631,10 @@ class Quater:
                 router = self._compiled_router()
                 match = router.match(request.method, request.path)
                 if match.route is not None:
+                    self._prepare_matched_route_context(
+                        match.route.definition,
+                        request,
+                    )
                     await self._authenticate_route(match.route.definition, request)
         except Exception as exc:
             response = default_exception_response(exc, debug=self.config.debug)
@@ -577,6 +647,7 @@ class Quater:
                 request,
                 self._compiled_tool_registry(),
                 transport_auth=self.mcp_auth,
+                approval_hook=self.action_approval,
                 audit_hook=self.mcp_audit,
                 debug=self.config.debug,
             )
@@ -597,6 +668,14 @@ class Quater:
             if self._tool_registry.tools and self.mcp_auth is None:
                 raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
         return self._tool_registry
+
+    def _compiled_action_registry(self) -> ActionRegistry:
+        if self._action_registry is None or self._routes_dirty:
+            from quater.actions.registry import build_action_registry
+
+            self._action_registry = build_action_registry(tuple(self._routes))
+            self._validate_action_registry_security(self._action_registry)
+        return self._action_registry
 
     def _builtin_routes(self) -> tuple[RouteDefinition, ...]:
         routes: list[RouteDefinition] = []
@@ -642,7 +721,37 @@ class Quater:
                     metadata={"include_in_openapi": False},
                 )
             )
+        if self._has_cli_routes():
+            routes.append(
+                RouteDefinition(
+                    method="GET",
+                    path=ACTIONS_MANIFEST_PATH,
+                    handler=self._actions_manifest,
+                    name="quater_actions_manifest",
+                    auth=self.cli_auth,
+                    metadata={
+                        "include_in_openapi": False,
+                        "quater_builtin": "actions_manifest",
+                    },
+                )
+            )
+            routes.append(
+                RouteDefinition(
+                    method="POST",
+                    path=ACTIONS_RPC_PATH,
+                    handler=self._actions_call,
+                    name="quater_actions_call",
+                    auth=self.cli_auth,
+                    metadata={
+                        "include_in_openapi": False,
+                        "quater_builtin": "actions_call",
+                    },
+                )
+            )
         return tuple(routes)
+
+    def _has_cli_routes(self) -> bool:
+        return any(route.cli for route in self._routes)
 
     async def _openapi_json(self) -> JSONResponse:
         return JSONResponse(self._openapi_schema_document())
@@ -710,6 +819,100 @@ class Quater:
             headers={"content-security-policy": DOCS_CSP},
         )
 
+    async def _actions_manifest(self) -> JSONResponse:
+        from quater import __version__
+
+        return JSONResponse(
+            action_manifest(
+                self._compiled_action_registry(),
+                service_name=self.name or "Quater",
+                service_version=__version__,
+            )
+        )
+
+    async def _actions_call(self, request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except RequestJSONError:
+            return _action_error_response("invalid_json", "Malformed JSON body", 400)
+        if not isinstance(payload, Mapping):
+            return _action_error_response("invalid_request", "Invalid request", 400)
+
+        action_name = payload.get("action")
+        arguments = payload.get("arguments", {})
+        dry_run = payload.get("dry_run", False)
+        if not isinstance(action_name, str) or not action_name:
+            return _action_error_response("invalid_action", "Invalid action", 400)
+        if not isinstance(arguments, Mapping):
+            return _action_error_response("invalid_arguments", "Invalid arguments", 400)
+        if not isinstance(dry_run, bool):
+            return _action_error_response("invalid_dry_run", "Invalid dry_run", 400)
+
+        try:
+            approval_token = _action_approval_token(payload)
+        except BadRequestError as exc:
+            return _action_error_response("invalid_approval", exc.detail, 400)
+
+        action = self._compiled_action_registry().get(action_name)
+        if action is None or not action.cli:
+            return _action_error_response("unknown_action", "Unknown action", 404)
+
+        try:
+            if dry_run:
+                result = await preflight_action(
+                    action,
+                    request,
+                    cast(Mapping[str, object], arguments),
+                    source="remote_cli",
+                    authenticated_by=self.cli_auth,
+                    approval_token=approval_token,
+                )
+                return JSONResponse(preflight_payload(result))
+
+            response = await execute_action(
+                action,
+                request,
+                cast(Mapping[str, object], arguments),
+                source="remote_cli",
+                authenticated_by=self.cli_auth,
+                approval_hook=self.action_approval,
+                approval_token=approval_token,
+            )
+            payload = await response_payload(response)
+            status_code = response.status_code if response.status_code >= 400 else 200
+            return JSONResponse(
+                payload,
+                status_code=status_code,
+            )
+        except ApprovalRequiredError as exc:
+            return _action_error_response(
+                "approval_required",
+                "Approval required",
+                409,
+                action=exc.action,
+                arguments_hash=exc.arguments_hash,
+            )
+        except ApprovalDeniedError as exc:
+            return _action_error_response(
+                "approval_denied",
+                "Approval denied",
+                403,
+                action=exc.action,
+                arguments_hash=exc.arguments_hash,
+            )
+        except BadRequestError as exc:
+            return _action_error_response("bad_request", exc.detail, 400)
+        except HTTPError as exc:
+            return _action_error_response("http_error", exc.detail, exc.status_code)
+        except ValueError:
+            return _action_error_response(
+                "response_too_large",
+                "Response too large",
+                502,
+            )
+        except Exception:
+            return _action_error_response("action_failed", "Action call failed", 500)
+
     def _openapi_schema_document(self) -> dict[str, object]:
         if self._openapi_schema is None:
             from quater import __version__
@@ -721,6 +924,57 @@ class Quater:
                 version=__version__,
             )
         return self._openapi_schema
+
+    def _resolve_route_description(
+        self,
+        route_name: str,
+        description: str | None,
+        handler: Handler,
+        *,
+        tool: bool,
+        cli: bool,
+    ) -> str | None:
+        if tool:
+            return resolve_tool_description(route_name, description, handler)
+        if cli:
+            return resolve_action_description(
+                "CLI action",
+                route_name,
+                description,
+                handler,
+            )
+        return normalize_route_description(description)
+
+    def _validate_route_exposure(
+        self,
+        route_name: str,
+        *,
+        tool: bool,
+        cli: bool,
+        needs_approval: bool,
+    ) -> None:
+        if route_name == "anonymous" and (tool or cli):
+            raise ConfigurationError("Externally callable routes require a name")
+        if tool and self.mcp_auth is None:
+            raise ConfigurationError(MCP_AUTH_REQUIRED_MESSAGE)
+        if cli and self.cli_auth is None:
+            raise ConfigurationError(CLI_AUTH_REQUIRED_MESSAGE)
+        if needs_approval and not (tool or cli):
+            raise ConfigurationError("needs_approval requires tool=True or cli=True")
+        if needs_approval and self.action_approval is None:
+            raise ConfigurationError(ACTION_APPROVAL_REQUIRED_MESSAGE)
+
+    def _validate_action_registry_security(
+        self,
+        registry: ActionRegistry,
+    ) -> None:
+        for action in registry.actions.values():
+            self._validate_route_exposure(
+                action.name,
+                tool=action.tool,
+                cli=action.cli,
+                needs_approval=action.needs_approval,
+            )
 
     def _ensure_middleware_mutable(self) -> None:
         if self._router is not None:
@@ -737,6 +991,18 @@ class Quater:
             return
         await authenticate_request(route.auth, request)
 
+    def _prepare_matched_route_context(
+        self,
+        route: RouteDefinition,
+        request: Request,
+    ) -> None:
+        if route.metadata.get("quater_builtin") not in {
+            "actions_manifest",
+            "actions_call",
+        }:
+            return
+        request.context = RequestContext(source="remote_cli")
+
     def _finalize_response(
         self,
         response: Response,
@@ -746,3 +1012,28 @@ class Quater:
         if self.config.cors is not None:
             response = add_cors_headers(response, request, self.config.cors)
         return add_security_headers(response, context, self.config)
+
+
+def _action_approval_token(payload: Mapping[object, object]) -> str | None:
+    value = payload.get("approval_token", payload.get("approvalToken"))
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise BadRequestError("Invalid approval token")
+    return value
+
+
+def _action_error_response(
+    code: str,
+    message: str,
+    status_code: int,
+    *,
+    action: str | None = None,
+    arguments_hash: str | None = None,
+) -> JSONResponse:
+    error: dict[str, object] = {"code": code, "message": message}
+    if action is not None:
+        error["action"] = action
+    if arguments_hash is not None:
+        error["arguments_hash"] = arguments_hash
+    return JSONResponse({"ok": False, "error": error}, status_code=status_code)

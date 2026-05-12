@@ -147,4 +147,6 @@ def test_route_metadata_can_be_registered_without_compiling_routes() -> None:
     assert route.name == "handler"
     assert route.description == "Check health."
     assert route.tool is True
+    assert route.cli is False
+    assert route.needs_approval is False
     assert route.auth is None

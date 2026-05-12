@@ -10,7 +10,9 @@ import sys
 
 import quater
 from quater import (
+    ActionApproval,
     AppConfig,
+    ApprovalRequest,
     AuthContext,
     AuthRequest,
     CORSConfig,
@@ -64,7 +66,9 @@ print(json.dumps({
 
 def test_public_exports_are_intentionally_small() -> None:
     assert quater.__all__ == [
+        "ActionApproval",
         "AppConfig",
+        "ApprovalRequest",
         "AuthContext",
         "AuthRequest",
         "BytesResponse",
@@ -85,6 +89,8 @@ def test_public_exports_are_intentionally_small() -> None:
     ]
     assert quater.Quater is Quater
     assert not hasattr(quater, "App")
+    assert quater.ActionApproval is ActionApproval
+    assert quater.ApprovalRequest is ApprovalRequest
     assert quater.AuthContext is AuthContext
     assert quater.AuthRequest is AuthRequest
     assert quater.AppConfig is AppConfig

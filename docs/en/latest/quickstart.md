@@ -21,20 +21,24 @@ async def echo(request: Request) -> dict[str, object]:
 Run it:
 
 ```bash
-uv run granian examples.basic_app:app --interface rsgi
+quater dev main.py
 ```
 
-Reload while editing:
+Reload is already enabled in development. You can be explicit if you want:
 
 ```bash
-uv run granian examples.basic_app:app --interface rsgi --reload
+quater dev main.py --reload
 ```
 
-Request logs come from Granian:
+Access logs also come from Granian and are enabled by default. Disable them with
+`--no-access-log` when you want quieter local output:
 
 ```bash
-uv run granian examples.basic_app:app --interface rsgi --access-log
+quater dev main.py --no-access-log
 ```
+
+`quater dev` uses RSGI and reload by default. If you start it without a target,
+Quater looks for common app files such as `main.py` and `app.py`.
 
 ## Generated Docs
 
@@ -127,11 +131,72 @@ async def get_user(id: int, request: Request) -> dict[str, object]:
 `mcp_auth` protects the MCP endpoint itself. Route `auth=` protects the handler.
 When both use the same function, Quater authenticates once for an MCP tool call.
 
+## First CLI Action
+
+Expose a route to the Quater CLI with `cli=True`. CLI actions are useful for
+operator workflows, local scripts, and remote administration. They use the same
+handler as HTTP, but they are protected by `cli_auth`.
+
+```python
+from quater import AuthContext, AuthRequest, Quater, Request
+
+
+async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+    if ctx.headers.get("authorization") != "Bearer admin-token":
+        return None
+    return AuthContext(subject="admin")
+
+
+app = Quater(cli_auth=authenticate)
+
+
+@app.get(
+    "/orders/{order_id}",
+    cli=True,
+    description="Fetch one order by id.",
+)
+async def get_order(order_id: str, request: Request) -> dict[str, object]:
+    assert request.auth is not None
+    return {
+        "order_id": order_id,
+        "source": request.context.source,
+        "subject": request.auth.subject,
+    }
+```
+
+Run it locally without starting a server:
+
+```bash
+QUATER_APP=main:app quater --token admin-token actions list
+QUATER_APP=main:app quater --token admin-token actions describe get_order
+QUATER_APP=main:app quater --token admin-token call get_order --order-id ord_1001
+```
+
+For a hosted app, connect once and call the same action remotely:
+
+```bash
+quater connect store https://api.example.com --token admin-token
+quater actions search store order
+quater actions describe store get_order
+quater call store get_order --order-id ord_1001
+```
+
+Use `--dry-run` before sensitive calls. Dry-run validates the inputs, shows the
+method and path that would be called, and returns an argument hash without
+running the handler.
+
+::: tip More on actions
+The full action guide covers remote discovery, JSON body arguments,
+approval-protected actions, and production `quater run` behavior:
+[Actions and CLI](/en/latest/actions).
+:::
+
 ## Responses
 
 Handlers can return plain values or response objects:
 
-- `dict`, `list`, dataclasses, and `msgspec.Struct` values become JSON.
+- `dict`, `list`, `tuple`, non-string scalar values, dataclasses, and
+  `msgspec.Struct` values become JSON.
 - `str` becomes text.
 - `bytes` becomes bytes.
 - `None` becomes `204 No Content`.
@@ -143,14 +208,14 @@ RSGI is the primary path because it maps directly to Granian's fast Python
 interface.
 
 ```bash
-uv run granian examples.basic_app:app --interface rsgi
+quater dev main.py --interface rsgi
 ```
 
 ASGI and WSGI use the same `Quater.handle()` core:
 
 ```bash
-uv run granian examples.asgi_compat:app --interface asgi
-uv run granian examples.wsgi_compat:app --interface wsgi
+quater dev asgi_compat.py --interface asgi
+quater dev wsgi_compat.py --interface wsgi
 ```
 
 You can also pass the explicit adapter if a server wants it:

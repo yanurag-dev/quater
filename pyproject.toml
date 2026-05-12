@@ -36,6 +36,9 @@ Homepage = "https://github.com/DevilsAutumn/quater"
 Repository = "https://github.com/DevilsAutumn/quater"
 Issues = "https://github.com/DevilsAutumn/quater/issues"
 
+[project.scripts]
+quater = "quater.cli.main:main"
+
 [dependency-groups]
 dev = [
   "build>=1.2",

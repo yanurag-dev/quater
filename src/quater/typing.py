@@ -20,8 +20,9 @@ def _empty_metadata() -> Mapping[str, object]:
 class RequestContext:
     """Small per-call context shared by HTTP APIs and tool calls."""
 
-    source: Literal["api", "mcp", "tool"] = "api"
+    source: Literal["api", "mcp", "tool", "local_cli", "remote_cli"] = "api"
     tool_name: str | None = None
+    action_name: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -42,11 +43,25 @@ class AuthContext:
     metadata: Mapping[str, object] = field(default_factory=_empty_metadata)
 
 
+@dataclass(slots=True, frozen=True)
+class ApprovalRequest:
+    """Request passed to an approval hook before a protected action runs."""
+
+    action: str
+    arguments_hash: str
+    token: str
+    auth: AuthContext | None = None
+    context: RequestContext = field(default_factory=RequestContext)
+
+
 Authenticate: TypeAlias = Callable[[AuthRequest], Awaitable[AuthContext | None]]
+ActionApproval: TypeAlias = Callable[[ApprovalRequest], Awaitable[bool]]
 LifespanHook: TypeAlias = Callable[[], Awaitable[None]]
 
 __all__ = [
+    "ActionApproval",
     "Authenticate",
+    "ApprovalRequest",
     "AuthContext",
     "AuthRequest",
     "LifespanHook",

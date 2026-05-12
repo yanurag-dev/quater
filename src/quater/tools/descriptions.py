@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from quater.exceptions import ConfigurationError
+from quater.actions.descriptions import (
+    MAX_ACTION_DESCRIPTION_LENGTH,
+    handler_action_description,
+    normalize_action_description,
+    resolve_action_description,
+)
 
-MAX_TOOL_DESCRIPTION_LENGTH = 1000
-
+MAX_TOOL_DESCRIPTION_LENGTH = MAX_ACTION_DESCRIPTION_LENGTH
 
 def normalize_route_description(value: str | None) -> str | None:
     if value is None:
@@ -15,22 +19,11 @@ def normalize_route_description(value: str | None) -> str | None:
 
 
 def normalize_tool_description(value: str | None) -> str | None:
-    normalized = normalize_route_description(value)
-    if normalized is None:
-        return None
-    if len(normalized) > MAX_TOOL_DESCRIPTION_LENGTH:
-        raise ConfigurationError(
-            "Tool descriptions must be 1000 characters or fewer"
-        )
-    return normalized
+    return normalize_action_description(value)
 
 
 def handler_tool_description(handler: object) -> str | None:
-    doc = getattr(handler, "__doc__", None)
-    if not isinstance(doc, str):
-        return None
-    first_line = doc.strip().splitlines()[0] if doc.strip() else ""
-    return normalize_tool_description(first_line)
+    return handler_action_description(handler)
 
 
 def resolve_tool_description(
@@ -38,14 +31,9 @@ def resolve_tool_description(
     explicit_description: str | None,
     handler: object,
 ) -> str:
-    description = normalize_tool_description(explicit_description)
-    if description is not None:
-        return description
-
-    description = handler_tool_description(handler)
-    if description is not None:
-        return description
-
-    raise ConfigurationError(
-        f"Tool route {route_name!r} must define a non-empty description"
+    return resolve_action_description(
+        "Tool route",
+        route_name,
+        explicit_description,
+        handler,
     )

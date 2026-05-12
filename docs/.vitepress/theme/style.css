@@ -30,3 +30,46 @@
 .vp-doc code {
   font-variant-ligatures: none;
 }
+
+.q-mermaid {
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  overflow-x: auto;
+}
+
+.q-mermaid-svg {
+  min-width: 640px;
+}
+
+.q-mermaid-svg:empty {
+  min-height: 180px;
+}
+
+.q-mermaid-svg svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.q-mermaid-svg foreignObject,
+.q-mermaid-svg .nodeLabel {
+  overflow: visible;
+}
+
+.q-mermaid-error {
+  display: grid;
+  gap: 6px;
+  color: var(--vp-c-danger-1);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.q-mermaid-error strong,
+.q-mermaid-error span {
+  display: block;
+}

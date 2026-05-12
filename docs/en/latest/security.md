@@ -4,6 +4,27 @@ Quater runs security checks before auth, route handlers, and MCP tool lookup.
 That order matters. Bad hosts, oversized bodies, and invalid MCP origins should
 not reach user code.
 
+## Security Flow
+
+For HTTP, MCP, and remote CLI calls, Quater rejects unsafe requests before it
+reaches user code. Local CLI calls do not have HTTP host or origin headers, but
+they still use CLI auth, argument validation, route auth, and approval checks.
+
+```mermaid
+flowchart TB
+    security["request checks"]
+    http["HTTP route"]
+    exposed["MCP / CLI action"]
+    surface["surface auth"]
+    http_route["route auth"]
+    action_route["route auth"]
+    approval["approval if needed"]
+    handler["handler"]
+
+    security --> http --> http_route --> handler
+    security --> exposed --> surface --> action_route --> approval --> handler
+```
+
 ## Response Headers
 
 Strict mode is the default. It adds baseline headers to handler responses,
@@ -86,6 +107,61 @@ the same function, Quater runs it once for a tool call.
 `AuthRequest.context.source` is `"api"` for HTTP, `"mcp"` for MCP protocol
 requests, and `"tool"` for MCP `tools/call`.
 
+For CLI actions, pass an auth hook to the app as `cli_auth`:
+
+```python
+app = Quater(cli_auth=authenticate)
+```
+
+`cli_auth` protects local action discovery, local action execution, remote
+manifest discovery, and remote action execution. If an app exposes even one
+`cli=True` route, `cli_auth` is required.
+
+CLI actions also receive request context:
+
+- `"local_cli"` for in-process local CLI calls.
+- `"remote_cli"` for hosted action calls through the remote action protocol.
+
+Route `auth=` still protects the handler. If `cli_auth` and route `auth=` are
+the same function, Quater runs it once for an action call.
+
+## Approval Checks
+
+`needs_approval=True` adds a second gate for exposed MCP tools and CLI actions.
+Use it for operations that should not run on authentication alone.
+
+```python
+from quater import ApprovalRequest, Quater
+
+
+async def approve_action(ctx: ApprovalRequest) -> bool:
+    return ctx.token == "approve-local"
+
+
+app = Quater(
+    cli_auth=authenticate,
+    action_approval=approve_action,
+)
+
+
+@app.patch(
+    "/orders/{order_id}/status",
+    cli=True,
+    needs_approval=True,
+    description="Update an order status.",
+)
+async def update_order_status(order_id: str, status: str) -> dict[str, str]:
+    return {"order_id": order_id, "status": status}
+```
+
+Quater validates and binds action arguments before it calls `action_approval`.
+The hook receives the action name, a stable argument hash, the submitted token,
+the authenticated subject, and request context. Quater does not issue approval
+tokens; your hook defines the policy.
+
+Dry-run is available for every CLI action and returns the same argument hash
+without calling the handler or approval hook.
+
 ## CORS And MCP Origins
 
 Use `CORSConfig` for browser CORS headers:
@@ -117,6 +193,34 @@ MCP auth is checked per HTTP request. `initialize` does not create an
 authenticated session, and Quater does not reuse its token for later calls.
 Clients should send their bearer token on `initialize`, `tools/list`, and every
 `tools/call`.
+
+## Remote Action Protocol
+
+When an app has `cli=True` routes, Quater exposes:
+
+- `GET /.well-known/quater-actions.json`
+- `POST /__quater__/actions/call`
+
+Both endpoints use `cli_auth`. The manifest endpoint is protected because action
+names, descriptions, paths, and schemas can reveal operational capabilities.
+The RPC endpoint validates JSON shape, rejects unknown arguments, enforces
+body limits, and caps action responses before returning them to the client.
+
+Use the `quater` CLI instead of calling these endpoints directly.
+
+## Production Server Checks
+
+`quater dev` is for development. It enables reload by default.
+
+`quater run` is for production. Before starting Granian, it checks that:
+
+- `debug` is disabled.
+- `security` is `"strict"`.
+- `allowed_hosts` is configured.
+- `allowed_hosts` does not contain `*`.
+
+Use `--allow-insecure` only in a controlled environment where you intentionally
+want to skip those checks.
 
 ## Documentation Endpoints
 

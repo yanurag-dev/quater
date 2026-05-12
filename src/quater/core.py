@@ -22,6 +22,8 @@ class RouteDefinition:
     name: str
     description: str | None = None
     tool: bool = False
+    cli: bool = False
+    needs_approval: bool = False
     auth: Authenticate | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     middleware: MiddlewareStack = field(default_factory=MiddlewareStack)

@@ -2,13 +2,41 @@
 
 Quater can expose selected HTTP routes as MCP tools.
 
-The route stays the source of truth. MCP is another way to call it, not a second
-app hiding beside your API. The handler, validation, middleware, response
-serialization, and route auth all stay in one place.
+The route definition is the source metadata for the tool. MCP is a separate
+runtime surface from HTTP dispatch, but it is not a second copy of your business
+logic. The generated tool calls the same handler and reuses the route's argument
+binding, route-level auth, response normalization, description, and input
+schema.
+
+If you also expose a route with `cli=True`, the same route can be called by HTTP,
+MCP, and the Quater CLI. See [Actions and CLI](/en/latest/actions) for the CLI
+side of that model.
 
 There is one extra rule: if the app exposes tools, it must define `mcp_auth`.
 Tools are executable capabilities. Even `tools/list` reveals names, descriptions,
 and schemas, so Quater does not expose a tool registry without an auth boundary.
+
+## MCP Request Flow
+
+Every MCP request is still an HTTP request, so auth is checked on each request.
+`initialize` does not create a server-side session.
+
+```mermaid
+flowchart TB
+    request["POST /mcp"]
+    origin["origin check"]
+    auth["mcp_auth"]
+    dispatch["JSON-RPC dispatch"]
+    route["route auth"]
+    binding["bind args"]
+    approval["approval"]
+    handler["handler"]
+    list["tools/list"]
+
+    request --> origin --> auth --> dispatch
+    dispatch --> route --> binding --> approval --> handler
+    dispatch --> list
+```
 
 ## The Auth Model
 
@@ -190,6 +218,71 @@ Tool calls look like this:
 }
 ```
 
+## Approval-Protected Tools
+
+Use `needs_approval=True` when a tool can change state or trigger work that
+should require a second check.
+
+```python
+from quater import ApprovalRequest, AuthContext, AuthRequest, Quater
+
+
+async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+    if ctx.headers.get("authorization") != "Bearer mcp-token":
+        return None
+    return AuthContext(subject="agent")
+
+
+async def approve_action(ctx: ApprovalRequest) -> bool:
+    return ctx.token == "approve-local"
+
+
+app = Quater(
+    mcp_auth=authenticate,
+    action_approval=approve_action,
+)
+
+
+@app.patch(
+    "/orders/{order_id}/status",
+    tool=True,
+    needs_approval=True,
+    description="Update an order status.",
+)
+async def update_order_status(order_id: str, status: str) -> dict[str, str]:
+    return {"order_id": order_id, "status": status}
+```
+
+The approval token is sent in `_meta`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "update_order_status",
+    "arguments": {
+      "order_id": "ord_1001",
+      "status": "shipped"
+    },
+    "_meta": {
+      "approvalToken": "approve-local"
+    }
+  }
+}
+```
+
+If the token is missing, Quater returns a JSON-RPC error with
+`data.code == "approval_required"` and includes the `arguments_hash`. Your
+`action_approval` hook decides whether a token is valid for that action,
+argument hash, authenticated subject, and request context.
+
+::: tip Same approval hook as CLI actions
+MCP tools and CLI actions share `needs_approval=True` and `action_approval`.
+That keeps sensitive workflows consistent no matter how the route is called.
+:::
+
 ## Request Context
 
 The same handler can tell how it was called.
@@ -226,6 +319,7 @@ MCP tool calls use:
 ```python
 request.context.source == "tool"
 request.context.tool_name == "get_user"
+request.context.action_name == "get_user"
 ```
 
 Auth hooks receive the same context through `AuthRequest.context`. That is useful

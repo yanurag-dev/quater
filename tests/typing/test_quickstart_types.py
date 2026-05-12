@@ -34,7 +34,10 @@ async def health() -> dict[str, bool]:
 )
 async def get_user(id: int, request: Request) -> dict[str, object]:
     assert_type(id, int)
-    assert_type(request.context.source, Literal["api", "mcp", "tool"])
+    assert_type(
+        request.context.source,
+        Literal["api", "mcp", "tool", "local_cli", "remote_cli"],
+    )
     return {
         "id": id,
         "source": request.context.source,

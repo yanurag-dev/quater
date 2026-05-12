@@ -7,7 +7,9 @@ Use top-level imports for normal app code:
 
 ```python
 from quater import (
+    ActionApproval,
     AppConfig,
+    ApprovalRequest,
     AuthContext,
     AuthRequest,
     BytesResponse,
@@ -39,11 +41,12 @@ app = Quater(
     openapi_path="/openapi.json",
     mcp_docs_path="/mcp/docs",
     mcp_auth=authenticate,
+    cli_auth=authenticate,
 )
 ```
 
 The snippet assumes you already defined `authenticate`. For an app with no MCP
-tools, omit `mcp_auth`.
+tools, omit `mcp_auth`. For an app with no CLI actions, omit `cli_auth`.
 
 Stable constructor options:
 
@@ -62,9 +65,14 @@ Stable constructor options:
 - `mcp_allowed_origins`
 - `mcp_auth`
 - `mcp_audit`
+- `cli_auth`
+- `action_approval`
 
 The MCP JSON-RPC endpoint is always `/mcp`. There is no `mcp_path` option. If
 an app exposes tools, `mcp_auth` is required.
+
+If an app exposes `cli=True` routes, `cli_auth` is required. If any exposed
+route uses `needs_approval=True`, `action_approval` is required.
 
 ## Routes
 
@@ -90,6 +98,8 @@ Stable decorator options:
 - `name`
 - `description`
 - `tool`
+- `cli`
+- `needs_approval`
 - `auth`
 - `metadata`
 - `before`
@@ -100,6 +110,12 @@ Stable decorator options:
 `tool=True` exposes the route through MCP. Tool routes must have a useful
 description, either through `description=` or the handler docstring. The app
 must also be created with `mcp_auth`.
+
+`cli=True` exposes the route through Quater actions. CLI action routes also need
+a useful description and the app must be created with `cli_auth`.
+
+`needs_approval=True` can be used with `tool=True` or `cli=True`. It requires an
+`action_approval` hook on the app.
 
 ## Request And Context
 
@@ -115,9 +131,16 @@ async def whoami(request: Request) -> dict[str, object]:
     }
 ```
 
-`request.context.source` is `"api"` for HTTP calls, `"mcp"` for MCP protocol
-requests such as `initialize` and `tools/list`, and `"tool"` for MCP
-`tools/call`.
+`request.context.source` is:
+
+- `"api"` for normal HTTP calls.
+- `"mcp"` for MCP protocol requests such as `initialize` and `tools/list`.
+- `"tool"` for MCP `tools/call`.
+- `"local_cli"` for local Quater CLI action calls.
+- `"remote_cli"` for hosted Quater CLI action calls.
+
+`request.context.tool_name` is set for MCP tool calls.
+`request.context.action_name` is set for MCP tool calls and CLI action calls.
 
 ## Auth
 
@@ -149,6 +172,67 @@ app = Quater(mcp_auth=authenticate)
 protects individual handlers. If both point to the same function, Quater runs it
 once for an MCP tool call.
 
+For CLI actions, pass an auth hook as `cli_auth`:
+
+```python
+app = Quater(cli_auth=authenticate)
+```
+
+`cli_auth` protects local action discovery, local action execution, remote
+action discovery, and remote action execution. Route `auth=` still protects
+individual handlers.
+
+## Actions and Approval
+
+Use `cli=True` for routes that should be callable from the Quater CLI:
+
+```python
+app = Quater(cli_auth=authenticate)
+
+
+@app.get("/orders/{order_id}", cli=True, description="Fetch one order by id.")
+async def get_order(order_id: str) -> dict[str, str]:
+    return {"order_id": order_id}
+```
+
+Use `needs_approval=True` for exposed actions that require a second check before
+execution:
+
+```python
+from quater import ApprovalRequest, Quater
+
+
+async def approve_action(ctx: ApprovalRequest) -> bool:
+    return ctx.token == "approve-local"
+
+
+app = Quater(
+    cli_auth=authenticate,
+    action_approval=approve_action,
+)
+
+
+@app.patch(
+    "/orders/{order_id}/status",
+    cli=True,
+    needs_approval=True,
+    description="Update an order status.",
+)
+async def update_order_status(order_id: str, status: str) -> dict[str, str]:
+    return {"order_id": order_id, "status": status}
+```
+
+`ApprovalRequest` includes:
+
+- `action`
+- `arguments_hash`
+- `token`
+- `auth`
+- `context`
+
+Quater validates action arguments before calling the approval hook. Dry-run
+returns the same argument hash without calling the handler or approval hook.
+
 ## Responses
 
 Use response objects when you need explicit status, headers, content type, or
@@ -160,7 +244,8 @@ from quater import JSONResponse, StreamResponse, TextResponse
 
 Plain return values still cover the common case:
 
-- `dict` and `list` become JSON.
+- `dict`, `list`, `tuple`, `bool`, `int`, and `float` become JSON.
+- dataclass instances and `msgspec.Struct` instances become JSON.
 - `str` becomes `TextResponse`.
 - `bytes` becomes `BytesResponse`.
 - `None` becomes `204 No Content`.

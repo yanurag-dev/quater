@@ -4,22 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from inspect import Signature
-from types import UnionType
-from typing import Union, get_args, get_origin
-from urllib.parse import quote, urlencode
 
-from quater.auth import authenticate_request
+from quater.actions.executor import execute_action
 from quater.core import RouteDefinition
-from quater.exceptions import BadRequestError, ConfigurationError
-from quater.params import BoundParameter, HandlerPlan, build_handler_plan
+from quater.exceptions import ConfigurationError
+from quater.params import HandlerPlan, build_handler_plan
 from quater.request import Request
-from quater.response import Response, normalize_response
-from quater.routing import ParamSegment, RoutePattern, parse_route_pattern
-from quater.serialization import dumps_json
+from quater.response import Response
+from quater.routing import RoutePattern, parse_route_pattern
 from quater.tools.descriptions import resolve_tool_description
 from quater.tools.schema import tool_input_schema
-from quater.typing import Authenticate, RequestContext
+from quater.typing import ActionApproval, Authenticate
 
 
 @dataclass(slots=True, frozen=True)
@@ -37,27 +32,18 @@ class ToolDefinition:
         arguments: Mapping[str, object],
         *,
         authenticated_by: Authenticate | None = None,
+        approval_hook: ActionApproval | None = None,
+        approval_token: str | None = None,
     ) -> Response:
-        path_params, query_string, body = self._build_request_parts(arguments)
-        tool_request = Request(
-            method=self.route.method,
-            path=_render_tool_path(self.pattern, path_params),
-            scheme=request.scheme,
-            headers=request.headers.raw,
-            query_string=query_string,
-            body=body,
-            auth=request.auth,
-            client=request.client,
-            max_body_size=request.max_body_size,
-            context=RequestContext(source="tool", tool_name=self.name),
+        return await execute_action(
+            self,
+            request,
+            arguments,
+            source="tool",
+            authenticated_by=authenticated_by,
+            approval_hook=approval_hook,
+            approval_token=approval_token,
         )
-        if self.route.auth is not None and not (
-            request.auth is not None and self.route.auth is authenticated_by
-        ):
-            await authenticate_request(self.route.auth, tool_request)
-            request.auth = tool_request.auth
-        result = await self.handler_plan.call(tool_request, path_params)
-        return normalize_response(result)
 
     def as_mcp_tool(self) -> dict[str, object]:
         return {
@@ -65,54 +51,6 @@ class ToolDefinition:
             "description": self.description,
             "inputSchema": self.input_schema,
         }
-
-    def _build_request_parts(
-        self,
-        arguments: Mapping[str, object],
-    ) -> tuple[dict[str, object], str, bytes]:
-        expected_names = {
-            parameter.name
-            for parameter in self.handler_plan.parameters
-            if parameter.source != "request"
-        }
-        unknown = sorted(set(arguments) - expected_names)
-        if unknown:
-            raise BadRequestError(f"Unknown tool argument: {unknown[0]}")
-
-        path_params: dict[str, object] = {}
-        query_items: list[tuple[str, str]] = []
-        body_value: object = None
-        has_body = False
-
-        converters = _path_converters(self.pattern)
-        for parameter in self.handler_plan.parameters:
-            if parameter.source == "request":
-                continue
-            if parameter.name not in arguments:
-                value = _missing_value(parameter)
-                if value is _MISSING and parameter.source != "query":
-                    raise BadRequestError(f"Missing tool argument: {parameter.name}")
-            else:
-                value = arguments[parameter.name]
-
-            if parameter.source == "path":
-                path_params[parameter.name] = _convert_path_argument(
-                    parameter.name,
-                    value,
-                    converters,
-                )
-            elif parameter.source == "query":
-                if value is not _MISSING:
-                    query_items.append((parameter.name, _argument_to_query(value)))
-            elif parameter.source == "body":
-                body_value = value
-                has_body = True
-
-        return (
-            path_params,
-            urlencode(query_items),
-            dumps_json(body_value) if has_body else b"",
-        )
 
 
 @dataclass(slots=True, frozen=True)
@@ -155,62 +93,3 @@ def build_tool_registry(routes: tuple[RouteDefinition, ...]) -> ToolRegistry:
         )
 
     return ToolRegistry(tools=tools)
-
-
-_MISSING = object()
-
-
-def _missing_value(parameter: BoundParameter) -> object:
-    if parameter.default is not Signature.empty:
-        return parameter.default
-    if _allows_none(parameter.annotation):
-        if parameter.source == "body":
-            return None
-        return _MISSING
-    return _MISSING
-
-
-def _path_converters(pattern: RoutePattern) -> dict[str, ParamSegment]:
-    return {
-        segment.name: segment
-        for segment in pattern.segments
-        if isinstance(segment, ParamSegment)
-    }
-
-
-def _convert_path_argument(
-    name: str,
-    value: object,
-    converters: Mapping[str, ParamSegment],
-) -> object:
-    converter = converters[name]
-    try:
-        return converter.converter(str(value))
-    except ValueError as exc:
-        raise BadRequestError(f"Invalid path argument: {name}") from exc
-
-
-def _argument_to_query(value: object) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
-
-
-def _render_tool_path(
-    pattern: RoutePattern,
-    path_params: Mapping[str, object],
-) -> str:
-    parts: list[str] = []
-    for segment in pattern.segments:
-        if isinstance(segment, ParamSegment):
-            parts.append(quote(str(path_params[segment.name]), safe=""))
-        else:
-            parts.append(segment.value)
-    return "/" + "/".join(parts)
-
-
-def _allows_none(annotation: object) -> bool:
-    origin = get_origin(annotation)
-    if origin not in {UnionType, Union}:
-        return False
-    return type(None) in get_args(annotation)

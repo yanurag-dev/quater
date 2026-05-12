@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: Typed Python APIs for people and agents.
-  tagline: Build one route surface for HTTP and MCP tools, with explicit auth and fast msgspec serialization.
+  tagline: Declare an operation once, then expose it as HTTP, an MCP tool, or an operational CLI action with explicit auth and fast msgspec serialization.
   actions:
     - theme: brand
       text: Start Building
@@ -13,10 +13,12 @@ hero:
       link: /en/latest/api
 
 features:
-  - title: One handler, two surfaces
-    details: A route can stay a normal HTTP endpoint and, when you opt in, become an MCP tool without creating a second app path.
+  - title: One handler, many surfaces
+    details: A route can stay a normal HTTP endpoint and, when you opt in, become an MCP tool or CLI action without duplicating the handler.
   - title: Auth stays visible
-    details: HTTP routes use route-level auth. MCP has a transport auth boundary, then the same route auth inside tool calls.
+    details: HTTP routes use route-level auth. MCP and CLI actions add their own transport boundary, then reuse route auth inside the handler.
+  - title: Actions for operations
+    details: Expose selected routes to a local or remote CLI with compact discovery, dry-run, and approval hooks for sensitive workflows.
   - title: Built around speed
     details: "Quater keeps the hot path small: Granian on RSGI, msgspec for JSON, and a native router underneath."
   - title: Docs by default

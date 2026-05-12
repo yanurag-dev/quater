@@ -1,0 +1,510 @@
+from __future__ import annotations
+
+import importlib
+import json
+from pathlib import Path
+
+import pytest
+
+from quater.cli.main import main
+from tests.unit.cli.helpers import write_app
+
+
+def test_cli_lists_local_actions_as_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            if ctx.headers.get("authorization") == "Bearer secret":
+                return AuthContext(subject="cli")
+            return None
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "--token",
+            "secret",
+            "actions",
+            "list",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert payload == {
+        "actions": [
+            {
+                "name": "get_user",
+                "description": "Fetch one user.",
+            }
+        ]
+    }
+
+
+def test_cli_searches_local_actions_as_compact_results(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            return {"id": id}
+
+        @app.get("/reports/sales", cli=True, description="Read sales report.")
+        async def sales_report() -> dict[str, bool]:
+            return {"ok": True}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "actions",
+            "search",
+            "sales",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert json.loads(captured.out) == {
+        "actions": [
+            {
+                "name": "sales_report",
+                "description": "Read sales report.",
+            }
+        ]
+    }
+
+
+def test_cli_describes_local_action_usage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        import msgspec
+        from quater import AuthContext, AuthRequest, Quater
+
+        class CreateUser(msgspec.Struct):
+            name: str
+            age: int
+            newsletter: bool = False
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.post("/users", cli=True, description="Create one user.")
+        async def create_user(user: CreateUser) -> dict[str, object]:
+            return {"name": user.name, "age": user.age}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "actions",
+            "describe",
+            "create_user",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    payload = json.loads(captured.out)
+    assert payload["name"] == "create_user"
+    assert payload["usage"]["command"] == (
+        "quater call create_user --user "
+        '\'{"name":"example","age":1}\''
+    )
+    assert payload["arguments"] == [
+        {
+            "name": "user",
+            "flag": "--user",
+            "required": True,
+            "type": "object",
+            "example": '{"name":"example","age":1}',
+        }
+    ]
+    assert "dry_run_command" in payload["usage"]
+    assert payload["input_schema"]["required"] == ["user"]
+
+
+def test_cli_actions_are_protected_by_cli_auth(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return None
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(["--app", "sample:app", "actions", "list"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.out == ""
+    assert captured.err == "Unauthorized\n"
+
+
+def test_cli_call_executes_action_with_typed_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        import msgspec
+        from quater import AuthContext, AuthRequest, Quater
+
+        class CreateUser(msgspec.Struct):
+            name: str
+            age: int
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            if ctx.headers.get("authorization") == "Bearer secret":
+                return AuthContext(subject="cli")
+            return None
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.post("/users", cli=True, description="Create one user.")
+        async def create_user(user: CreateUser) -> dict[str, object]:
+            return {"name": user.name, "age": user.age}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "--token",
+            "secret",
+            "call",
+            "create_user",
+            "--user",
+            '{"name":"Ada","age":37}',
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    payload = json.loads(captured.out)
+    assert payload == {
+        "ok": True,
+        "status_code": 200,
+        "body": {"name": "Ada", "age": 37},
+    }
+
+
+def test_cli_call_rejects_empty_approval_token(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        async def approve(ctx) -> bool:
+            return True
+
+        app = Quater(cli_auth=cli_auth, action_approval=approve)
+
+        @app.post(
+            "/users/{id:int}/lock",
+            cli=True,
+            needs_approval=True,
+            description="Lock one user.",
+        )
+        async def lock_user(id: int) -> dict[str, int]:
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "call",
+            "lock_user",
+            "--approval",
+            " ",
+            "--id",
+            "7",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 2
+    assert captured.err == "Approval token must not be empty\n"
+
+
+def test_cli_call_auth_sees_local_cli_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater, Request
+
+        seen_contexts: list[tuple[str, str | None]] = []
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            seen_contexts.append((ctx.context.source, ctx.context.action_name))
+            if ctx.headers.get("authorization") == "Bearer secret":
+                return AuthContext(subject="cli")
+            return None
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int, request: Request) -> dict[str, object]:
+            return {
+                "id": id,
+                "source": request.context.source,
+                "action": request.context.action_name,
+            }
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "--token",
+            "secret",
+            "call",
+            "get_user",
+            "--id",
+            "7",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert json.loads(captured.out)["body"] == {
+        "id": 7,
+        "source": "local_cli",
+        "action": "get_user",
+    }
+
+    sample = importlib.import_module("sample")
+
+    assert sample.seen_contexts == [("local_cli", "get_user")]
+
+
+def test_cli_dry_run_validates_but_does_not_call_handler(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        calls = 0
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            global calls
+            calls += 1
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(
+        [
+            "--app",
+            "sample:app",
+            "--json",
+            "call",
+            "get_user",
+            "--dry-run",
+            "--id",
+            "7",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    payload = json.loads(captured.out)
+    assert payload["dry_run"] is True
+    assert payload["path"] == "/users/7"
+    assert payload["approval_required"] is False
+
+    sample = importlib.import_module("sample")
+
+    assert sample.calls == 0
+
+
+def test_cli_call_requires_cli_auth_before_handler_runs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        calls = 0
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return None
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            global calls
+            calls += 1
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(["--app", "sample:app", "call", "get_user", "--id", "7"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.out == ""
+    assert captured.err == "Unauthorized\n"
+
+    sample = importlib.import_module("sample")
+
+    assert sample.calls == 0
+
+
+def test_cli_call_cannot_execute_non_cli_routes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.get("/health")
+        async def health() -> dict[str, bool]:
+            return {"ok": True}
+
+        @app.get("/users/{id:int}", cli=True, description="Fetch one user.")
+        async def get_user(id: int) -> dict[str, int]:
+            return {"id": id}
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(["--app", "sample:app", "call", "health"])
+
+    captured = capsys.readouterr()
+    assert code == 2
+    assert captured.err == "Unknown CLI action\n"
+
+
+def test_cli_handler_errors_do_not_leak_details(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_app(
+        tmp_path,
+        """
+        from quater import AuthContext, AuthRequest, Quater
+
+        async def cli_auth(ctx: AuthRequest) -> AuthContext | None:
+            return AuthContext(subject="cli")
+
+        app = Quater(cli_auth=cli_auth)
+
+        @app.post("/danger", cli=True, description="Run dangerous action.")
+        async def danger() -> dict[str, bool]:
+            raise RuntimeError("database password is secret")
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    code = main(["--app", "sample:app", "call", "danger"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.out == ""
+    assert captured.err == "Command failed\n"

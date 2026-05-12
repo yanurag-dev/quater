@@ -6,6 +6,7 @@ import time
 from collections.abc import Mapping
 from typing import cast
 
+from quater.actions.approval import ApprovalDeniedError, ApprovalRequiredError
 from quater.config import AppConfig
 from quater.exceptions import BadRequestError, HTTPError, RequestJSONError
 from quater.request import Request
@@ -18,15 +19,20 @@ from quater.response import (
 )
 from quater.tools.audit import AuditHook, ToolAuditEvent, sanitize_arguments
 from quater.tools.registry import ToolRegistry
-from quater.typing import Authenticate, RequestContext
+from quater.typing import ActionApproval, Authenticate, RequestContext
 
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 SUPPORTED_PROTOCOL_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26")
 LATEST_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
+MAX_TOOL_RESPONSE_BYTES = 1024 * 1024
 
 _REQUEST_METHODS = frozenset({"initialize", "tools/list", "tools/call"})
 _NOTIFICATION_METHODS = frozenset({"notifications/initialized"})
+
+
+class _ToolResponseTooLarge(Exception):
+    pass
 
 
 async def mcp_request_context(request: Request) -> RequestContext:
@@ -45,9 +51,11 @@ async def mcp_request_context(request: Request) -> RequestContext:
         return RequestContext(source="tool")
 
     name = params.get("name")
+    tool_name = name if isinstance(name, str) else None
     return RequestContext(
         source="tool",
-        tool_name=name if isinstance(name, str) else None,
+        tool_name=tool_name,
+        action_name=tool_name,
     )
 
 
@@ -70,6 +78,7 @@ async def handle_mcp_request(
     registry: ToolRegistry,
     *,
     transport_auth: Authenticate | None = None,
+    approval_hook: ActionApproval | None = None,
     audit_hook: AuditHook | None = None,
     debug: bool = False,
 ) -> Response:
@@ -118,6 +127,7 @@ async def handle_mcp_request(
             payload.get("params"),
             registry,
             transport_auth=transport_auth,
+            approval_hook=approval_hook,
             audit_hook=audit_hook,
             debug=debug,
         )
@@ -193,6 +203,7 @@ async def _handle_tools_call(
     registry: ToolRegistry,
     *,
     transport_auth: Authenticate | None,
+    approval_hook: ActionApproval | None,
     audit_hook: AuditHook | None,
     debug: bool,
 ) -> Response:
@@ -208,12 +219,19 @@ async def _handle_tools_call(
     if tool is None:
         return _json_rpc_error(request_id, -32602, "Unknown tool")
 
+    try:
+        approval_token = _approval_token(params)
+    except _JSONRPCError as exc:
+        return _json_rpc_error(request_id, exc.code, exc.message)
+
     start = time.perf_counter()
     try:
         response = await tool.call(
             request,
             cast(Mapping[str, object], arguments),
             authenticated_by=transport_auth,
+            approval_hook=approval_hook,
+            approval_token=approval_token,
         )
     except BadRequestError as exc:
         await _audit(
@@ -225,6 +243,44 @@ async def _handle_tools_call(
             start=start,
         )
         return _json_rpc_error(request_id, -32602, exc.detail)
+    except ApprovalRequiredError as exc:
+        await _audit(
+            audit_hook,
+            request,
+            name,
+            arguments,
+            success=False,
+            start=start,
+        )
+        return _json_rpc_error(
+            request_id,
+            -32001,
+            "Approval required",
+            data={
+                "code": "approval_required",
+                "action": exc.action,
+                "arguments_hash": exc.arguments_hash,
+            },
+        )
+    except ApprovalDeniedError as exc:
+        await _audit(
+            audit_hook,
+            request,
+            name,
+            arguments,
+            success=False,
+            start=start,
+        )
+        return _json_rpc_error(
+            request_id,
+            -32002,
+            "Approval denied",
+            data={
+                "code": "approval_denied",
+                "action": exc.action,
+                "arguments_hash": exc.arguments_hash,
+            },
+        )
     except HTTPError as exc:
         await _audit(
             audit_hook,
@@ -248,6 +304,22 @@ async def _handle_tools_call(
         return _json_rpc_result(request_id, _tool_result(detail, is_error=True))
 
     success = response.status_code < 400
+    try:
+        result = await _tool_result_response(response, is_error=not success)
+    except _ToolResponseTooLarge:
+        await _audit(
+            audit_hook,
+            request,
+            name,
+            arguments,
+            success=False,
+            start=start,
+        )
+        return _json_rpc_result(
+            request_id,
+            _tool_result("Tool response too large", is_error=True),
+        )
+
     await _audit(
         audit_hook,
         request,
@@ -256,10 +328,22 @@ async def _handle_tools_call(
         success=success,
         start=start,
     )
-    return _json_rpc_result(
-        request_id,
-        await _tool_result_response(response, is_error=not success),
-    )
+    return _json_rpc_result(request_id, result)
+
+
+def _approval_token(params: Mapping[str, object]) -> str | None:
+    meta = params.get("_meta")
+    if meta is None:
+        return None
+    if not isinstance(meta, Mapping):
+        raise _JSONRPCError(None, -32602, "Invalid params")
+
+    value = meta.get("approvalToken", meta.get("approval_token"))
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise _JSONRPCError(None, -32602, "Invalid approval token")
+    return value
 
 
 async def _tool_result_response(
@@ -269,10 +353,16 @@ async def _tool_result_response(
 ) -> dict[str, object]:
     if isinstance(response, StreamResponse):
         chunks: list[bytes] = []
+        size = 0
         async for chunk in response.body_iterator:
+            size += len(chunk)
+            if size > MAX_TOOL_RESPONSE_BYTES:
+                raise _ToolResponseTooLarge
             chunks.append(chunk)
         text = b"".join(chunks).decode("utf-8", errors="replace")
     else:
+        if len(response.body) > MAX_TOOL_RESPONSE_BYTES:
+            raise _ToolResponseTooLarge
         text = response.body.decode("utf-8", errors="replace")
     return _tool_result(text, is_error=is_error)
 
@@ -319,12 +409,21 @@ def _json_rpc_result(request_id: object, result: object) -> JSONResponse:
     )
 
 
-def _json_rpc_error(request_id: object, code: int, message: str) -> JSONResponse:
+def _json_rpc_error(
+    request_id: object,
+    code: int,
+    message: str,
+    *,
+    data: object | None = None,
+) -> JSONResponse:
+    error: dict[str, object] = {"code": code, "message": message}
+    if data is not None:
+        error["data"] = data
     return JSONResponse(
         {
             "jsonrpc": JSONRPC_VERSION,
             "id": request_id,
-            "error": {"code": code, "message": message},
+            "error": error,
         }
     )
 

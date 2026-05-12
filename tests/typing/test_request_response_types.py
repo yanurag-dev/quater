@@ -40,8 +40,12 @@ assert_type(request.method, str)
 assert_type(request.path, str)
 assert_type(request.auth, AuthContext | None)
 assert_type(request.context, RequestContext)
-assert_type(request.context.source, Literal["api", "mcp", "tool"])
+assert_type(
+    request.context.source,
+    Literal["api", "mcp", "tool", "local_cli", "remote_cli"],
+)
 assert_type(request.context.tool_name, str | None)
+assert_type(request.context.action_name, str | None)
 assert_type(request.headers["authorization"], str)
 assert_type(request.query["page"], str)
 assert_type(request.cookies.get("session"), str | None)

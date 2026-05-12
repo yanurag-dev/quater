@@ -28,7 +28,11 @@ class HandlerPlan:
     handler: Handler
     parameters: tuple[BoundParameter, ...]
 
-    async def call(self, request: Request, path_params: Mapping[str, object]) -> object:
+    async def bind(
+        self,
+        request: Request,
+        path_params: Mapping[str, object],
+    ) -> dict[str, object]:
         kwargs: dict[str, object] = {}
         for parameter in self.parameters:
             if parameter.source == "request":
@@ -40,7 +44,10 @@ class HandlerPlan:
             elif parameter.source == "body":
                 kwargs[parameter.name] = await _bind_body_parameter(request, parameter)
 
-        return await self.handler(**kwargs)
+        return kwargs
+
+    async def call(self, request: Request, path_params: Mapping[str, object]) -> object:
+        return await self.handler(**await self.bind(request, path_params))
 
 
 def build_handler_plan(
