@@ -1,49 +1,68 @@
 # Quater
 
-Quater is a typed Python API framework for APIs that humans use and agents can
-safely operate.
+Quater is a typed Python backend framework for building APIs that humans use
+directly and AI agents can operate safely.
 
-The important bit is boring in the best way: HTTP calls and tool calls use the
-same route, middleware, body parser, error handling, and response serialization.
-Auth stays explicit. Normal HTTP routes use route-level `auth=...`; MCP uses
-`mcp_auth` at the transport boundary, then optional route auth inside the tool
-handler.
+As AI systems become another real caller of backend systems, backends are no longer
+called from one place. The same business operation may be used by a browser, an
+internal service, an MCP client, or an operator running a CLI command. In
+existing frameworks, those access paths become separate code paths: an HTTP
+endpoint, an AI tool wrapper, an admin script, and extra glue code between them.
 
-## Working On Quater
+Quater is built around one rule: declare the operation once, then choose which
+surfaces may call it.
 
-This repo uses `uv`.
+You write one handler. It can remain a normal HTTP endpoint, and when you opt
+in, Quater derives an MCP tool or CLI action from that route metadata. HTTP,
+MCP, and CLI still have separate runtime surfaces, but they call the same
+handler instead of asking you to maintain separate tool code or admin scripts.
+Parameter binding, route-level auth, response normalization, and generated
+schemas stay tied to the route.
 
-```bash
-uv sync --group dev
-uv run pytest
-uv run mypy src examples tests
-uv run ruff check .
-uv build
+Request flow:
+
+```mermaid
+flowchart TB
+    caller["caller: human / service / AI"]
+    hosted["hosted HTTP requests"]
+    adapter["RSGI / ASGI / WSGI"]
+    http["HTTP route"]
+    mcp["MCP tool"]
+    action["CLI action"]
+    surface_auth["surface auth"]
+    route_auth["route auth"]
+    bind["bind inputs"]
+    view["view handler"]
+
+    caller --> hosted
+    hosted --> adapter
+    adapter --> http
+    adapter --> mcp
+    adapter --> action
+    http --> route_auth
+    mcp --> surface_auth
+    action --> surface_auth
+    surface_auth --> route_auth
+    route_auth --> bind
+    bind --> view
 ```
 
-Release artifact checks need the release group too:
+## What Quater Focuses On
 
-```bash
-uv sync --group dev --group release
-uv build
-uv run twine check dist/*
-```
+- **One declared operation:** HTTP, MCP tools, and CLI actions can share the same
+  handler.
+- **AI-readable operations:** descriptions and generated schemas tell agents
+  what an exposed operation does and how to call it.
+- **Explicit auth boundaries:** normal routes use `auth=...`, MCP uses
+  `mcp_auth`, and CLI actions use `cli_auth`.
+- **Operational safety:** CLI actions support dry-run and approval hooks for
+  sensitive workflows.
+- **Generated docs:** OpenAPI, Swagger UI, and MCP tool docs are generated from
+  route metadata.
+- **Fast defaults:** Quater uses Granian/RSGI, msgspec JSON, and a native route
+  matcher.
 
-The documentation site uses VitePress:
-
-```bash
-npm install
-npm run docs:dev
-npm run docs:build
-```
-
-Release docs can be snapshotted before publishing:
-
-```bash
-npm run docs:snapshot -- 0.1
-```
-
-## Small App
+## A Small App
 
 ```python
 from quater import Quater, Request
@@ -61,187 +80,127 @@ async def echo(request: Request) -> dict[str, object]:
     return {"received": await request.json()}
 ```
 
-Run it with Granian on the RSGI path:
+Run it:
 
 ```bash
-uv run granian examples.basic_app:app --interface rsgi
+quater dev main.py
 ```
 
-Use reload while building locally:
+Quater serves docs by default:
 
-```bash
-uv run granian examples.basic_app:app --interface rsgi --reload
-```
+- `GET /docs` for Swagger UI.
+- `GET /openapi.json` for OpenAPI.
+- `GET /mcp/docs` for exposed MCP tools.
 
-Turn on request logs at the server:
-
-```bash
-uv run granian examples.basic_app:app --interface rsgi --access-log
-```
-
-ASGI and WSGI are there for compatibility:
-
-```bash
-uv run granian examples.asgi_compat:app --interface asgi
-uv run granian examples.wsgi_compat:app --interface wsgi
-```
-
-## Docs Endpoints
-
-These are on by default:
-
-- `GET /docs` serves Swagger UI.
-- `GET /openapi.json` serves the OpenAPI document.
-- `GET /mcp/docs` shows the MCP tools you exposed.
-
-OpenAPI docs are public unless you disable them. MCP docs use `mcp_auth` when
-the app has one, which every tool-exposing app must have.
-
-Move or disable them with paths:
-
-```python
-app = Quater(
-    docs_path="/docs",
-    openapi_path="/openapi.json",
-    mcp_docs_path="/mcp/docs",
-)
-
-private_app = Quater(
-    docs_path=None,
-    openapi_path=None,
-    mcp_docs_path=None,
-)
-```
-
-## Handlers
-
-Handlers are async functions. Quater binds path params, simple query params,
-JSON body models, and `Request`.
-
-```python
-@app.get("/users/{id:int}")
-async def get_user(id: int, include_email: bool = False) -> dict[str, object]:
-    return {"id": id, "include_email": include_email}
-```
-
-Return plain Python values or response objects:
-
-- `dict`, `list`, dataclasses, and `msgspec.Struct` values become JSON.
-- `str` becomes text.
-- `bytes` becomes bytes.
-- `None` becomes `204 No Content`.
-- `Response` subclasses are returned directly.
-
-## Auth
-
-Auth is per route. Public routes have no auth hook. Protected routes pass one to
-the decorator. Returning `None` means `401 Unauthorized`.
+## One Handler, Multiple Access Paths
 
 ```python
 from quater import AuthContext, AuthRequest, Quater, Request
 
-app = Quater()
-
 
 async def authenticate(ctx: AuthRequest) -> AuthContext | None:
-    if ctx.headers.get("authorization") != "Bearer demo-token":
+    if ctx.headers.get("authorization") != "Bearer admin-token":
         return None
-    return AuthContext(subject="demo-user")
+    return AuthContext(subject="admin")
 
 
-@app.get("/me", auth=authenticate)
-async def me(request: Request) -> dict[str, str]:
-    assert request.auth is not None
-    return {"subject": request.auth.subject}
-```
-
-## MCP Tools
-
-Routes are normal HTTP routes unless you opt in with `tool=True`.
-
-If an app exposes even one tool, create it with `mcp_auth`. That hook protects
-the MCP endpoint, the MCP docs page, tool discovery, and tool calls.
-
-```python
 app = Quater(
-    mcp_docs_path="/mcp/docs",
-    mcp_allowed_origins=["http://localhost:3000"],
     mcp_auth=authenticate,
+    cli_auth=authenticate,
 )
 
 
 @app.get(
-    "/users/{id:int}",
+    "/orders/{order_id}",
     tool=True,
+    cli=True,
     auth=authenticate,
-    description="Fetch one user by id.",
+    description="Fetch one order by id.",
 )
-async def get_user(id: int, request: Request) -> dict[str, object]:
+async def get_order(order_id: str, request: Request) -> dict[str, object]:
     assert request.auth is not None
     return {
-        "id": id,
+        "order_id": order_id,
         "subject": request.auth.subject,
         "source": request.context.source,
-        "tool": request.context.tool_name,
     }
 ```
 
-Descriptions are required for tools. Use `description=` or a handler docstring.
-Agents need real intent metadata. A name like `get_user` is not enough.
+That one route is now:
 
-MCP lives at `POST /mcp`. The endpoint is fixed. There is no `mcp_path` option.
+- `GET /orders/ord_1001` for normal HTTP clients.
+- an MCP tool available through `POST /mcp`.
+- a local or remote CLI action.
 
-`mcp_auth` is checked on each HTTP request. `initialize` is not a login. Clients
-must keep sending `Authorization: Bearer ...` for `initialize`, `tools/list`,
-and every `tools/call`.
+For AI clients, the useful part is not just that the route becomes a tool. The
+operation also has a human-written description and a generated input schema, so
+the model can understand when to call it and what arguments are valid.
 
-If `mcp_auth` and route `auth=` are the same function, Quater runs it once for a
-tool call. If they are different functions, Quater runs both. Use that when the
-MCP client token and route-level user or scope check are intentionally different.
+CLI discovery is intentionally compact:
 
-HTTP calls see:
-
-```python
-request.context.source == "api"
-request.context.tool_name is None
+```bash
+quater connect store https://api.example.com --token admin-token
+quater actions list store
 ```
 
-MCP `tools/call` calls see:
-
-```python
-request.context.source == "tool"
-request.context.tool_name == "get_user"
+```text
+get_order
+  Fetch one order by id.
 ```
 
-Current MCP support: `initialize`, `notifications/initialized`, `tools/list`,
-and `tools/call`.
+The detailed command help lives behind `describe`:
 
-Not in the MVP yet: SSE streaming, sessions, resumability, prompts, resources,
-stdio, and server-to-client notifications.
-
-## Public API
-
-Common app code should import from `quater`:
-
-```python
-from quater import (
-    AppConfig,
-    AuthContext,
-    AuthRequest,
-    CORSConfig,
-    Quater,
-    Request,
-    SignedCookieSigner,
-    ToolAuditEvent,
-)
+```bash
+quater actions describe store get_order
 ```
 
-The frozen surface is listed in
-[docs/en/latest/api.md](docs/en/latest/api.md).
+And execution stays straightforward:
 
-More detail:
+```bash
+quater call store get_order --order-id ord_1001
+```
+
+For sensitive actions, dry-run shows what would happen before the handler runs:
+
+```text
+Dry run OK: update_order_status
+  PATCH /orders/ord_1001/status
+  arguments hash: sha256:...
+  protected action: yes
+  approval token: missing
+```
+
+## Current Status
+
+Quater is in its first alpha. The core is intentionally small: typed handlers,
+RSGI-first serving, generated docs, MCP tools, CLI actions, explicit auth, and
+security defaults. The API is still pre-release, so some names may change before
+the first stable version.
+
+## Read Next
 
 - [Quickstart](docs/en/latest/quickstart.md)
-- [Public API](docs/en/latest/api.md)
-- [Security](docs/en/latest/security.md)
+- [Actions and CLI](docs/en/latest/actions.md)
 - [MCP](docs/en/latest/mcp.md)
+- [Security](docs/en/latest/security.md)
+- [Public API](docs/en/latest/api.md)
+
+## Working On Quater
+
+This repo uses `uv`.
+
+```bash
+uv sync --group dev
+uv run pytest
+uv run mypy src examples tests
+uv run ruff check .
+uv build
+```
+
+Docs use VitePress:
+
+```bash
+npm install
+npm run docs:dev
+npm run docs:build
+```

@@ -1,4 +1,5 @@
 import { readdirSync } from 'node:fs'
+import { Buffer } from 'node:buffer'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
@@ -59,6 +60,7 @@ function sidebarFor(version: DocsVersion): DefaultTheme.SidebarItem[] {
       items: [
         { text: 'Overview', link: version.index },
         { text: 'Quickstart', link: `${version.base}quickstart` },
+        { text: 'Actions and CLI', link: `${version.base}actions` },
         { text: 'Public API', link: `${version.base}api` },
         { text: 'MCP', link: `${version.base}mcp` },
         { text: 'Security', link: `${version.base}security` },
@@ -82,6 +84,7 @@ const latestBase = latestDocs?.base ?? `/${language}/${latestDirectory}/`
 
 const nav: DefaultTheme.NavItem[] = [
   { text: 'Guide', link: `${latestBase}quickstart` },
+  { text: 'CLI', link: `${latestBase}actions` },
   { text: 'API', link: `${latestBase}api` },
   { text: 'MCP', link: `${latestBase}mcp` },
   {
@@ -98,6 +101,9 @@ export default defineConfig({
   lastUpdated: true,
 
   vite: {
+    build: {
+      chunkSizeWarningLimit: 900,
+    },
     plugins: [
       {
         name: 'vitepress-search-index-fix',
@@ -109,6 +115,27 @@ export default defineConfig({
         },
       },
     ],
+  },
+
+  markdown: {
+    config(md) {
+      const defaultFence = md.renderer.rules.fence
+
+      md.renderer.rules.fence = (tokens, index, options, env, self) => {
+        const token = tokens[index]
+        const language = token.info.trim().split(/\s+/)[0]
+
+        if (language === 'mermaid') {
+          const code = Buffer.from(token.content, 'utf8').toString('base64')
+          return `<MermaidDiagram code="${code}" />`
+        }
+
+        if (defaultFence !== undefined) {
+          return defaultFence(tokens, index, options, env, self)
+        }
+        return self.renderToken(tokens, index, options)
+      }
+    },
   },
 
   head: [
