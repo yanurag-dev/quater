@@ -794,6 +794,9 @@ class Quater:
                 )
             )
         if self.config.docs_path is not None:
+            from quater.docs.swagger import ensure_swagger_ui_assets_available
+
+            ensure_swagger_ui_assets_available()
             routes.append(
                 RouteDefinition(
                     method="GET",

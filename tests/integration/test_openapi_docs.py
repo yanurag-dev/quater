@@ -6,7 +6,7 @@ import msgspec
 import pytest
 
 from quater import Body, Cookie, Header, HTMLResponse, Path, Quater, Query, Request
-from quater.exceptions import RouteConflictError
+from quater.exceptions import ConfigurationError, RouteConflictError
 from quater.typing import AuthContext, AuthRequest
 
 
@@ -261,3 +261,41 @@ async def test_swagger_ui_assets_are_served_from_bundle() -> None:
     assert dict(js.headers)["content-type"] == "application/javascript; charset=utf-8"
     assert b"SwaggerUIBundle" in js.body
     assert b'url: "/openapi.json"' in initializer.body
+
+
+def test_enabled_swagger_ui_fails_fast_when_bundle_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from quater.docs import swagger
+
+    swagger._swagger_ui_asset_dir.cache_clear()
+    swagger._swagger_ui_asset_bytes.cache_clear()
+
+    def missing_bundle(name: str) -> object:
+        if name == "swagger_ui_bundle":
+            raise ModuleNotFoundError(name)
+        raise AssertionError(f"Unexpected import: {name}")
+
+    monkeypatch.setattr(swagger, "import_module", missing_bundle)
+
+    app = Quater()
+
+    with pytest.raises(ConfigurationError, match="swagger-ui-bundle"):
+        app.compile_routes()
+
+
+def test_disabled_swagger_ui_does_not_require_bundle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from quater.docs import swagger
+
+    swagger._swagger_ui_asset_dir.cache_clear()
+    swagger._swagger_ui_asset_bytes.cache_clear()
+
+    def missing_bundle(name: str) -> object:
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(swagger, "import_module", missing_bundle)
+
+    app = Quater(docs_path=None)
+    app.compile_routes()

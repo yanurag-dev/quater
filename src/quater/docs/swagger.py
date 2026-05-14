@@ -54,6 +54,12 @@ def swagger_ui_initializer_response(openapi_path: str) -> BytesResponse:
     )
 
 
+def ensure_swagger_ui_assets_available() -> None:
+    """Fail early when docs are enabled without bundled Swagger UI assets."""
+
+    _swagger_ui_asset_dir()
+
+
 @lru_cache(maxsize=len(SWAGGER_UI_ASSETS))
 def _swagger_ui_asset_bytes(asset_name: str) -> bytes:
     if asset_name not in SWAGGER_UI_ASSETS:
@@ -68,7 +74,13 @@ def _swagger_ui_asset_bytes(asset_name: str) -> bytes:
 
 @lru_cache(maxsize=1)
 def _swagger_ui_asset_dir() -> Path:
-    bundle = import_module("swagger_ui_bundle")
+    try:
+        bundle = import_module("swagger_ui_bundle")
+    except ModuleNotFoundError as exc:
+        raise ConfigurationError(
+            "Swagger UI assets require swagger-ui-bundle. "
+            "Install Quater with runtime dependencies or set docs_path=None."
+        ) from exc
     value = getattr(bundle, "swagger_ui_path", None)
     if not isinstance(value, str | Path):
         raise ConfigurationError("swagger-ui-bundle is not installed correctly")
