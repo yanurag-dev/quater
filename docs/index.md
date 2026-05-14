@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: Backends for people, services, and AI agents.
-  tagline: Build normal Python APIs, then expose selected backend operations directly to agents and MCP clients without creating shadow code paths.
+  tagline: Build normal Python APIs, then expose selected backend operations directly to agents and operators without creating shadow code paths.
   actions:
     - theme: brand
       text: Start Building
@@ -41,6 +41,39 @@ framework, start with the [Quickstart](/en/latest/quickstart), then read the
 Prerequisites: Python 3.11 or newer, async Python basics, and enough HTTP
 knowledge to read request and response examples.
 
+## One Operation, Three Ways To Call It
+
+```python
+from quater import AuthContext, AuthRequest, Quater, Request
+
+
+async def authenticate(ctx: AuthRequest) -> AuthContext | None:
+    if ctx.headers.get("authorization") != "Bearer demo-token":
+        return None
+    return AuthContext(subject="demo-user")
+
+
+app = Quater(mcp_auth=authenticate, cli_auth=authenticate)
+
+
+@app.get(
+    "/orders/{order_id}",
+    tool=True,
+    cli=True,
+    auth=authenticate,
+    description="Fetch one order by id.",
+)
+async def get_order(order_id: str, request: Request) -> dict[str, object]:
+    assert request.auth is not None
+    return {
+        "order_id": order_id,
+        "subject": request.auth.subject,
+        "source": request.context.source,
+    }
+```
+
+Run it:
+
 ```bash
 uv add quater
 quater dev main.py
@@ -53,11 +86,33 @@ Expected server output:
 [INFO] Listening at: http://127.0.0.1:8000
 ```
 
-## What Can Go Wrong
+Call it as HTTP:
 
-If an inner docs page returns a 404 on a static host, check that the docs build
-emitted the matching `.html` file. This is a site deployment issue, not a Quater
-runtime issue.
+```bash
+curl -H "Authorization: Bearer demo-token" \
+  http://127.0.0.1:8000/orders/ord_1001
+```
+
+Call it from the local CLI:
+
+```bash
+export QUATER_APP=main:app
+export QUATER_TOKEN=demo-token
+quater call get_order --order-id ord_1001
+```
+
+Call it as an MCP tool:
+
+```bash
+curl http://127.0.0.1:8000/mcp \
+  -H "Authorization: Bearer demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_order","arguments":{"order_id":"ord_1001"}}}'
+```
+
+All three calls reach the same handler. The `source` value tells you which
+surface called it: `api`, `cli`, or `mcp`.
+
 
 ## Also See
 
