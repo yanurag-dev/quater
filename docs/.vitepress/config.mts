@@ -188,7 +188,7 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: { light: '/logo-white-bg.svg', dark: '/logo-black-bg.svg' },
+    logo: { light: '/logo-no-bg.svg', dark: '/logo-no-bg.svg' },
     siteTitle: 'Quater',
 
     nav,
