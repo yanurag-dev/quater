@@ -26,6 +26,9 @@ Use action/tool discovery every time the available surface is unknown. Do not
 infer a tool name from an HTTP path or a handler name unless discovery confirms
 it.
 
+For CLI actions, discovery means `quater actions list/search/describe`. Do not
+read remote config files or call Quater's private action endpoints directly.
+
 ## Mutations Need Extra Care
 
 For operations that create, update, delete, send, charge, refund, deploy, or
@@ -54,6 +57,10 @@ Do not blindly retry:
 - status transitions
 - inventory reservations
 - deployment or migration actions
+
+If a call returns `401 Unauthorized`, ask for a fresh token and use the normal
+setup command (`quater login <remote> --token ...` for CLI, or the MCP client's
+auth config for MCP). Do not try alternate token formats or weaker auth.
 
 ## Large Responses
 

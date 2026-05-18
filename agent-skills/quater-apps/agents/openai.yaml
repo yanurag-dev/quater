@@ -1,4 +1,4 @@
 interface:
   display_name: "Quater Applications"
   short_description: "Operate Quater applications safely"
-  default_prompt: "Use $quater-apps to discover and safely call this Quater application."
+  default_prompt: "Use $quater-apps to set up a Quater remote, discover actions, and operate the app through Quater CLI or MCP."

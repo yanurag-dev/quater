@@ -33,6 +33,16 @@ Both gates can run for one tool call. If either denies, do not call the handler.
 
 Route `auth=` still protects the handler.
 
+For remote CLI access, configure or refresh the token through the CLI:
+
+```bash
+quater connect <remote> <url> --token <token>
+quater login <remote> --token <token>
+```
+
+Do not edit `~/.quater/remotes.json` by hand. The CLI stores remote config with
+restricted file permissions and refreshes cached discovery data after login.
+
 ## HTTP
 
 Normal HTTP routes are public unless the route or route group declares `auth=`.

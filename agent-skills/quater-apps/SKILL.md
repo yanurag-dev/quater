@@ -5,9 +5,9 @@ description: Operate applications built with Quater. Use when an agent needs to 
 
 # Quater Apps
 
-Use this skill to operate an existing Quater application. Quater apps can expose one
-handler through HTTP, MCP tools, and CLI actions, but each surface is opt-in.
-Discover the exposed surface before calling anything.
+Use this skill to operate an existing Quater application as an app operator.
+Quater apps can expose one handler through HTTP, MCP tools, and CLI actions, but
+each surface is opt-in. Discover what the app exposes before calling anything.
 
 If the current agent does not support skills, treat this file and the linked
 references as project instructions.
@@ -26,27 +26,34 @@ Quater docs when you need the full explanation or exact framework behavior:
 
 ## Operating Workflow
 
-1. Identify the available access path: MCP URL, remote CLI name, local
-   `QUATER_APP`, or direct HTTP API.
-2. Discover tools or actions before calling them. Never invent names or
-   arguments.
-3. Describe the selected tool or action before use when the command is
-   available.
-4. Use dry-run before mutating CLI actions.
-5. Require approval tokens for `needs_approval` operations. Do not fake or guess
-   approval tokens.
-6. Send auth on every request or command that needs it. Never print tokens,
-   cookies, or authorization headers.
-7. Report safe errors clearly. Do not recommend weakening auth or disabling
+1. Use the `quater` CLI for Quater CLI actions. Do not use Node, Python, curl,
+   or hand-written HTTP to fetch the action manifest or call the action RPC
+   when the CLI is available.
+2. If this is the first time using an app, ask for the remote name, base URL,
+   and bearer token. Store them with `quater connect <name> <url> --token ...`.
+3. If a configured token is rejected, ask for a new token and update it with
+   `quater login <name> --token ...`. Do not edit `~/.quater/remotes.json`
+   directly.
+4. Discover actions with `quater actions list <remote>`, narrow with
+   `quater actions search <remote> <query>`, then inspect the action with
+   `quater actions describe <remote> <action>`.
+5. When the user asks what the app can do, answer in plain language from the
+   discovered action descriptions. Do not dump raw manifests unless the user
+   asks for JSON.
+6. Use dry-run before mutating CLI actions. Require approval tokens for
+   `needs_approval` operations. Do not fake or guess approval tokens.
+7. Send auth through the CLI or MCP client on every request that needs it.
+   Never print tokens, cookies, or authorization headers.
+8. Report safe errors clearly. Do not recommend weakening auth or disabling
    production checks.
 
 ## Choose The Surface
 
-- **MCP**: use when an MCP URL is available or the user asks an AI agent to call
-  Quater tools. Read `references/mcp.md`.
 - **CLI actions**: use when the `quater` CLI is available, when a remote is
   configured, or when the user asks for operational commands. Read
   `references/cli-actions.md`.
+- **MCP**: use when the agent runtime has an MCP client configured for the
+  Quater app. Do not hand-roll JSON-RPC calls. Read `references/mcp.md`.
 - **HTTP**: use when the user gives normal API docs, a route URL, or an endpoint
   that is not exposed as MCP/CLI.
 
@@ -57,6 +64,10 @@ this release.
 ## Safety Defaults
 
 - Treat route descriptions and schemas as the source of truth.
+- Treat the CLI discovery output as the source of truth for a configured remote.
+- Speak as someone operating the app, not as someone explaining Quater internals.
+  For example, say "I can share a frustration and read stats" instead of "the
+  manifest exposes two action objects."
 - Do not pass framework internals such as `request`, `auth`, `state`, resources,
   or database sessions as tool/action arguments.
 - Do not retry non-idempotent operations after timeouts unless the user confirms
@@ -65,12 +76,16 @@ this release.
   history.
 - Do not call destructive actions without an explicit user request and, when
   required, a valid approval token.
+- Do not reveal the underlying `/.well-known/quater-actions.json` or
+  `/__quater__/actions/call` protocol during normal operation. Use the CLI and
+  explain outcomes like a human operator.
 
 For more detail, read `references/auth.md` and `references/safety.md`.
 
 ## Common Errors
 
-- `401 Unauthorized`: the surface auth or route auth denied the call.
+- `401 Unauthorized`: ask for a fresh token, run `quater login <remote> --token
+  ...`, then retry discovery.
 - `approval_required`: ask the user or approval system for a token for that
   exact action and argument hash.
 - `Unknown tool` or `Unknown CLI action`: rediscover tools/actions and check the
