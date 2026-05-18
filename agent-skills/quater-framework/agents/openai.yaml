@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quater Framework"
+  short_description: "Build apps with the Quater framework"
+  default_prompt: "Use $quater-framework to build or debug a Quater application."
