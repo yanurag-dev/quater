@@ -67,6 +67,9 @@ MCP auth has two independent gates:
 - `mcp_auth` protects `initialize`, `tools/list`, `tools/call`, and `/mcp/docs`.
 - Route `auth=` protects the handler after the tool call resolves to a route.
 
+Quater checks MCP auth on each HTTP request. It does not authenticate once during
+`initialize` and then reuse that result for later tool calls.
+
 ```mermaid
 sequenceDiagram
     participant Client as MCP client
@@ -102,7 +105,7 @@ For a hosted app at `https://api.example.com`, configure the MCP URL as:
 https://api.example.com/mcp
 ```
 
-Bearer auth must go on every HTTP request:
+Bearer auth must go on every HTTP request, not only on `initialize`:
 
 ```json
 {
@@ -119,6 +122,12 @@ Bearer auth must go on every HTTP request:
 
 `initialize` is not a login. Quater does not create a server-side session from
 it. If the token expires, the next request fails with `401 Unauthorized`.
+
+::: tip Why the route may also have `auth=`
+`mcp_auth` decides whether the caller can use the MCP surface. Route `auth=`
+decides whether that caller can run the selected backend operation. Use both for
+sensitive tools.
+:::
 
 ## Request Flow
 

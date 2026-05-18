@@ -69,6 +69,12 @@ Routes without `auth=` are public HTTP routes. If the route also has
 `tool=True`, MCP still requires `mcp_auth` at the transport layer. If the route
 also has `cli=True`, CLI still requires `cli_auth`.
 
+::: warning Protect the handler, not only the surface
+Surface auth protects MCP or CLI entrypoints. It does not protect the normal
+HTTP endpoint for the same route. Add route `auth=` or group `auth=` for every
+sensitive handler.
+:::
+
 ## Surface Auth
 
 `mcp_auth` protects:
@@ -87,7 +93,9 @@ also has `cli=True`, CLI still requires `cli_auth`.
 - `POST /__quater__/actions/call`
 
 Route `auth=` protects the handler after the surface is accepted. If you reuse
-the same function for surface and route auth, Quater still runs both calls.
+the same function for surface and route auth, Quater still runs both calls. The
+surface call sees the transport path, while route auth sees the actual route
+path being executed.
 
 ## Approval
 

@@ -30,7 +30,7 @@ Input passed to auth hooks.
 AuthRequest(
     method: str,
     path: str,
-    headers: Mapping[str, str] = {},
+    headers: Mapping[str, str] = <empty read-only mapping>,
     context: RequestContext = RequestContext(),
 )
 ```
@@ -39,8 +39,12 @@ AuthRequest(
 | --- | --- | --- | --- |
 | `method` | `str` | required | Method being accessed. |
 | `path` | `str` | required | Path being accessed. |
-| `headers` | `Mapping[str, str]` | empty mapping | Normalized headers. |
-| `context` | `RequestContext` | `RequestContext()` | Source, entrypoint, request id, tool, and action metadata. |
+| `headers` | `Mapping[str, str]` | empty read-only mapping | Normalized headers. Header names are lowercase. |
+| `context` | [`RequestContext`](./request#symbol-requestcontext) | `RequestContext()` | Source, entrypoint, request id, tool, and action metadata. |
+
+MCP and CLI surface auth receive the surface request first. Route `auth=`
+receives a second `AuthRequest` for the actual route when the route declares
+auth.
 
 ## AuthContext {#symbol-authcontext}
 
@@ -55,7 +59,7 @@ AuthContext(subject: str, metadata: Mapping[str, object] = {})
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `subject` | `str` | required | Stable user, service, or agent id. |
-| `metadata` | `Mapping[str, object]` | empty mapping | Small request-scoped values your app wants to carry. |
+| `metadata` | `Mapping[str, object]` | empty read-only mapping | Small request-scoped values your app wants to carry. |
 
 Example:
 
@@ -104,6 +108,19 @@ ActionApproval = Callable[[ApprovalRequest], Awaitable[bool]]
 ```
 
 Return `True` to allow execution. Return `False` to deny it.
+
+## Authenticate {#symbol-authenticate}
+
+Added in `0.1.0a1`.
+
+Callable type for auth hooks.
+
+```python
+Authenticate = Callable[[AuthRequest], Awaitable[AuthContext | None]]
+```
+
+Return `AuthContext` to allow the request. Return `None` to deny it. Returning
+any other type is treated as unauthorized.
 
 ## HTTPError {#symbol-httperror}
 

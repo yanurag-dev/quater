@@ -152,6 +152,17 @@ flowchart TB
 `cli_auth` protects local action discovery, local calls, remote manifest
 discovery, and remote calls.
 
+For a remote action, the CLI sends auth to both discovery and execution
+endpoints. For a local action, Quater imports the app and builds an in-process
+request with the same auth headers. In both modes, route `auth=` still runs for
+the selected handler when the route declares it.
+
+::: warning CLI auth is not a replacement for route auth
+`cli_auth` answers "may this caller use the action surface?" Route `auth=`
+answers "may this caller run this handler?" Keep route `auth=` on sensitive
+operations that are also reachable through HTTP.
+:::
+
 ## Progressive Discovery
 
 `actions list` and `actions search` return only action names and descriptions.
@@ -358,6 +369,10 @@ file permissions. Set `QUATER_HOME` to use another directory.
 
 `Unknown CLI action`
 : The action name does not exist or the route does not have `cli=True`.
+
+`401 Unauthorized`
+: The token or custom header did not pass `cli_auth`, or the selected route's
+  `auth=` denied the underlying handler call.
 
 `Missing value for action argument --order-id`
 : Pass a value after the flag.

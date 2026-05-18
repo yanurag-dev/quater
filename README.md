@@ -35,7 +35,8 @@ flowchart TB
     adapter["Server adapter\nRSGI / ASGI / WSGI"]
     checks["Framework checks\nhost, body limit, CORS, request id"]
     router["Route metadata\nmethod, path, auth, resources"]
-    surface_auth["Surface auth\nmcp_auth or cli_auth"]
+    mcp_surface_auth["MCP auth\nmcp_auth"]
+    cli_surface_auth["CLI auth\ncli_auth"]
     route_auth["Route auth\nauth="]
     handler["Your handler\nget_order(...)"]
     response["Serialized response\nJSON, text, bytes, stream"]
@@ -48,9 +49,9 @@ flowchart TB
     remote_cli --> adapter
     adapter --> checks
     checks --> router
-    router --> surface_auth
-    router --> route_auth
-    surface_auth --> route_auth
+    router -->|HTTP| route_auth
+    router -->|MCP| mcp_surface_auth --> route_auth
+    router -->|remote CLI| cli_surface_auth --> route_auth
     route_auth --> handler
     handler --> response
 ```

@@ -1,7 +1,7 @@
 # Auth Model
 
-This page explains how Quater separates route auth from MCP and CLI transport
-auth.
+This page explains how Quater separates surface auth from route auth across
+HTTP, MCP, and CLI.
 
 ## Prerequisites
 
@@ -10,12 +10,13 @@ actions, read [Security](/en/latest/security) before deployment.
 
 ## The Rule
 
-Quater has layered auth. Each layer answers a different question:
+Quater has two auth gates. Each gate answers a different question:
 
 - `mcp_auth`: may this caller use the MCP transport?
 - `cli_auth`: may this caller use the CLI action surface?
 - route `auth=`: may this caller run this handler?
 
+`mcp_auth` and `cli_auth` are surface auth. Route `auth=` is handler auth.
 Quater does not collapse those layers because the surfaces have different risk.
 
 ```mermaid
@@ -35,6 +36,13 @@ sequenceDiagram
 ```
 
 HTTP routes skip surface auth and go directly to route `auth=` when it exists.
+MCP and CLI calls must pass surface auth first, then route `auth=` if the route
+declares it.
+
+::: warning Surface auth is not route auth
+If a route has no `auth=`, its HTTP endpoint is public even when the route also
+has `tool=True` or `cli=True`. Add route `auth=` for every sensitive handler.
+:::
 
 ## A Runnable Example
 
@@ -67,6 +75,28 @@ Missing auth returns:
 Unauthorized
 ```
 
+## What Runs When
+
+The same auth hook can safely be used for both gates, but Quater treats the
+calls as separate checks.
+
+For an MCP tool call:
+
+1. `mcp_auth` sees `POST /mcp` with `source="mcp"`.
+2. Quater resolves the tool to its route.
+3. Route `auth=` sees the real route path, such as `/orders/ord_1001`.
+4. The handler runs only after both checks pass.
+
+For a remote CLI action:
+
+1. `cli_auth` protects discovery and `POST /__quater__/actions/call`.
+2. Quater resolves the action to its route.
+3. Route `auth=` runs for the underlying route.
+4. Approval runs when the route has `needs_approval=True`.
+
+MCP `initialize` is not a login. Quater does not create an MCP session from it.
+Every later `tools/list` and `tools/call` request must carry valid auth again.
+
 ## Auth And Approval
 
 Auth identifies the caller. Approval confirms one sensitive operation should run
@@ -92,6 +122,14 @@ async def update_order_status(order_id: str, status: str) -> dict[str, str]:
 `401 Unauthorized`
 : The auth hook returned `None`. Check the token, header name, and route auth
 policy.
+
+HTTP route unexpectedly public
+: `mcp_auth` and `cli_auth` do not protect normal HTTP traffic. Add `auth=` to
+  the route or to a `RouteGroup`.
+
+MCP worked during `initialize` but failed later
+: Send the bearer token on every MCP request. `initialize` does not create a
+  Quater session.
 
 `MCP tools require mcp_auth`
 : A `tool=True` route exists without MCP transport auth.

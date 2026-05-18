@@ -80,7 +80,8 @@ flowchart TB
     checks["request checks\nframework: host, body size, CORS, request id"]
     router["router\nframework: native route matcher"]
     before["before middleware\nyour code"]
-    surface["surface auth\nframework + your code: mcp_auth / cli_auth"]
+    surface["surface check\nframework: HTTP, MCP, or CLI"]
+    surface_auth["surface auth\nyour code: mcp_auth / cli_auth"]
     route_auth["route auth\nyour code: auth="]
     bind["bind parameters\nframework: path, query, body, resources"]
     handler["handler\nyour code"]
@@ -89,11 +90,16 @@ flowchart TB
     out["response out\nframework"]
 
     in --> adapter --> checks --> router --> before --> surface
-    surface --> route_auth --> bind --> handler --> after --> serialize --> out
+    surface -->|HTTP| route_auth
+    surface -->|MCP or CLI| surface_auth --> route_auth
+    route_auth --> bind --> handler --> after --> serialize --> out
 ```
 
 Route groups do not add another router at request time. Quater flattens group
 prefixes, middleware, auth, metadata, and resources when routes compile.
+
+HTTP requests go from the route to route `auth=`. MCP and remote CLI requests
+run their surface auth first, then the same route `auth=` if the route has one.
 
 ## One Handler, Three Surfaces
 

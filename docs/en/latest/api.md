@@ -76,13 +76,17 @@ Important constructor options:
 - `allowed_hosts`: accepted Host headers.
 - `trusted_proxies`: proxy IPs or CIDR ranges trusted for forwarded headers.
 - `cors`: browser CORS policy.
-- `mcp_auth`: required when any route has `tool=True`.
-- `cli_auth`: required when any route has `cli=True`.
+- `mcp_auth`: surface auth for MCP. Required when any route has `tool=True`.
+- `cli_auth`: surface auth for CLI actions. Required when any route has
+  `cli=True`.
 - `action_approval`: required when any exposed route has `needs_approval=True`.
 - `access_logger`: receives structured access events.
 
 See [Application Reference](/en/latest/reference/application) for every option,
 type, default, and exception.
+
+Surface auth does not replace route `auth=`. Use route or group auth for
+handlers that should not be public HTTP endpoints.
 
 ## Routes
 

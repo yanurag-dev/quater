@@ -57,9 +57,9 @@ Quater(
 | `content_security_policy` | `str \| None` | `None` | Adds `Content-Security-Policy` in strict and relaxed modes. |
 | `mcp_docs_path` | `str \| None` | `"/mcp/docs"` | Human MCP docs path. `None` disables the page. |
 | `mcp_allowed_origins` | `Iterable[str] \| None` | `None` | Browser origins allowed for MCP requests. |
-| `mcp_auth` | `Authenticate \| None` | `None` | Required when any route uses `tool=True`. |
+| `mcp_auth` | [`Authenticate`](./auth#symbol-authenticate) \| None | `None` | Surface auth for MCP requests. Required when any route uses `tool=True`. Runs per MCP HTTP request and does not create a session. |
 | `mcp_audit` | `AuditHook \| None` | `None` | Receives redacted MCP tool-call audit events. |
-| `cli_auth` | `Authenticate \| None` | `None` | Required when any route uses `cli=True`. |
+| `cli_auth` | [`Authenticate`](./auth#symbol-authenticate) \| None | `None` | Surface auth for local and remote CLI actions. Required when any route uses `cli=True`. |
 | `action_approval` | [`ActionApproval`](./auth#symbol-actionapproval) \| None | `None` | Required when any tool/action uses `needs_approval=True`. |
 | `access_logger` | [`AccessLogHook`](./observability#symbol-accessloghook) \| None | `None` | Receives structured access events. |
 | `docs_path` | `str \| None` | `"/docs"` | Swagger UI path. `None` disables the page. |
