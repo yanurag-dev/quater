@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "quater"
 version = "0.1.0a1"
-description = "The Python framework for APIs that humans use and agents can safely operate."
+description = "The Python framework for building applications that humans use and agents can safely operate."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
