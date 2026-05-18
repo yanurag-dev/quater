@@ -10,15 +10,20 @@ Full docs: https://quater.devilsautumn.com/en/latest/actions
 
 - Use `quater` commands. Do not fetch `/.well-known/quater-actions.json` or call
   `/__quater__/actions/call` with Node, Python, curl, or custom HTTP code.
-- If the `quater` command is not available, tell the user the CLI is missing and
-  ask whether to install or activate the environment that contains Quater. Do
-  not replace the CLI with a custom script.
+- If the `quater` command is not available, check whether `uvx` is available.
+  When it is, run the package directly with `uvx --from quater quater ...`.
+  If neither `quater` nor `uvx` is available, ask the user to install Quater or
+  activate the environment that already has it. Do not replace the CLI with a
+  custom script.
 - Do not read or edit `~/.quater/remotes.json` directly. Use `quater connect`,
   `quater login`, and `quater remotes list`.
 - Do not print bearer tokens or approval tokens. If the user gives a token, use
   it in the command and redact it from explanations.
 - Use `--json` only when you need machine-readable output. Summarize results to
   the user in normal language.
+- Do not expose command transcripts, request metadata, raw manifests, internal
+  action RPC paths, or cached remote config in normal replies. The user asked
+  you to operate the app, not narrate the protocol.
 
 Global flags such as `--json` and `--token` go before the subcommand:
 
@@ -26,6 +31,25 @@ Global flags such as `--json` and `--token` go before the subcommand:
 quater --json actions describe frustratedAI share_frustration
 quater --token <token> actions list frustratedAI
 ```
+
+When `quater` is not installed but `uvx` is available, use the same commands
+through `uvx`:
+
+```bash
+uvx --from quater quater remotes list
+uvx --from quater quater connect frustratedAI https://example.up.railway.app --token <token>
+uvx --from quater quater actions list frustratedAI
+```
+
+If the app owner gives a required Quater version, pin it:
+
+```bash
+uvx --from quater==0.1.0a1 quater actions list frustratedAI
+```
+
+If `uvx` is also missing, stop and ask the user to install Quater or activate an
+environment that already includes it. The agent should not switch to raw HTTP
+scripts as a fallback.
 
 ## First-Time Remote Setup
 
@@ -129,6 +153,96 @@ quater call store create_order \
 ```
 
 Use `--json` when another agent or script needs machine-readable output.
+
+## Trusted Metadata
+
+Do not add operational metadata to action arguments unless the action schema
+explicitly requires it as normal app data.
+
+Quater sets trusted call context inside the framework:
+
+- `request.context.source`: `cli`
+- `request.context.entrypoint`: `server` for remote CLI, `local` for local CLI
+- `request.context.action_name`: the selected action name
+- `request.auth.subject`: the identity returned by the app's auth hook
+
+The user cannot safely provide those values. Do not add fields such as
+`agent_name`, `source`, `entrypoint`, `request_context`, or `auth_subject` to a
+payload unless they appear in `quater actions describe <remote> <action>` and
+the app clearly treats them as ordinary business input.
+
+If the app needs non-tamperable agent identity, it should derive that identity
+from the bearer token or auth hook on the server. The CLI skill cannot make a
+user-provided payload field tamper-proof.
+
+If an action or direct HTTP endpoint explicitly requires client-provided
+attribution fields, do not invent a custom source. For agent-operated CLI calls
+and direct HTTP calls:
+
+- `agent_name`: human-readable product name, such as `Codex`
+- `source`: always `cli`
+
+For Quater app operations, `source` is the agent operation channel. Direct HTTP
+still uses `cli` when the agent is operating the backend outside MCP. The agent
+identity belongs in `agent_name` or another schema-defined identity field.
+
+Good:
+
+```json
+{
+  "agent_name": "Codex",
+  "source": "cli"
+}
+```
+
+Avoid:
+
+```json
+{
+  "agent_name": "Codex",
+  "source": "codex-cli"
+}
+```
+
+Also avoid:
+
+```json
+{
+  "agent_name": "Codex",
+  "source": "quater-apps"
+}
+```
+
+Also avoid:
+
+```json
+{
+  "agent_name": "Codex",
+  "source": "codex"
+}
+```
+
+Also avoid for direct HTTP calls made by the agent:
+
+```json
+{
+  "agent_name": "Codex",
+  "source": "api"
+}
+```
+
+When reporting success, hide metadata and commands unless the user asks for
+debug details:
+
+```text
+Added the frustration note.
+```
+
+Avoid replies like:
+
+```text
+I used uvx --from quater quater call ... with source=cli and agent_name=Codex.
+```
 
 ## Dry-Run And Approval
 

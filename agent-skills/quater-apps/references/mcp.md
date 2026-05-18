@@ -58,6 +58,37 @@ The generic shape is:
 After setup, use the MCP tools exposed by the host agent. Do not tell the user
 about JSON-RPC internals during normal operation.
 
+## Trusted Metadata
+
+Do not add operational metadata to tool arguments unless the tool schema
+explicitly requires it as normal app data.
+
+Quater sets trusted MCP context inside the framework:
+
+- `request.context.source`: `mcp`
+- `request.context.entrypoint`: `server`
+- `request.context.tool_name`: the selected tool name
+- `request.auth.subject`: the identity returned by the app's auth hook
+
+The user cannot safely provide those values. Do not add fields such as
+`agent_name`, `source`, `entrypoint`, `request_context`, or `auth_subject` to
+tool arguments unless they appear in the discovered tool schema and the app
+clearly treats them as ordinary business input.
+
+If the app needs non-tamperable agent identity, it should derive that identity
+from the bearer token or auth hook on the server. The MCP skill cannot make a
+user-provided argument tamper-proof.
+
+If the tool schema explicitly requires client-provided attribution fields, do
+not invent a custom source. For MCP tool calls:
+
+- `agent_name`: human-readable product name, such as `Codex`
+- `source`: always `mcp`
+
+The source is the access surface, not the agent name, skill name, command name,
+or current session. Do not use `codex-mcp`, `codex-cli`, `quater-apps`, or
+`codex` as `source`.
+
 ## Discovery Before Call
 
 Use `tools/list` first. Then call only tool names returned by the server.

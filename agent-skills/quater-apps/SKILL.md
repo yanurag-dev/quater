@@ -26,9 +26,11 @@ Quater docs when you need the full explanation or exact framework behavior:
 
 ## Operating Workflow
 
-1. Use the `quater` CLI for Quater CLI actions. Do not use Node, Python, curl,
-   or hand-written HTTP to fetch the action manifest or call the action RPC
-   when the CLI is available.
+1. Use the `quater` CLI for Quater CLI actions. If `quater` is not installed
+   but `uvx` is available, run the package with
+   `uvx --from quater quater ...`. If neither is available, ask the user to
+   install or activate the Quater CLI. Do not use Node, Python, curl, or
+   hand-written HTTP to fetch the action manifest or call the action RPC.
 2. If this is the first time using an app, ask for the remote name, base URL,
    and bearer token. Store them with `quater connect <name> <url> --token ...`.
 3. If a configured token is rejected, ask for a new token and update it with
@@ -40,11 +42,21 @@ Quater docs when you need the full explanation or exact framework behavior:
 5. When the user asks what the app can do, answer in plain language from the
    discovered action descriptions. Do not dump raw manifests unless the user
    asks for JSON.
-6. Use dry-run before mutating CLI actions. Require approval tokens for
+6. Do not put operational metadata in action arguments. Quater sets trusted
+   context such as `source`, `entrypoint`, and action/tool name inside the
+   framework. User-supplied fields like `agent_name`, `source`, or `entrypoint`
+   are app data, not trusted metadata.
+7. If an action/tool/API schema explicitly asks for attribution fields, keep
+   their meaning separate. For agent-operated calls, send `source="cli"` when
+   using the Quater CLI or direct HTTP, and send `source="mcp"` when using MCP.
+   Keep agent identity in `agent_name`, such as `Codex`. Do not use values like
+   `codex-cli`, `quater-apps`, or `api` as `source` for agent-operated direct
+   HTTP calls.
+8. Use dry-run before mutating CLI actions. Require approval tokens for
    `needs_approval` operations. Do not fake or guess approval tokens.
-7. Send auth through the CLI or MCP client on every request that needs it.
+9. Send auth through the CLI or MCP client on every request that needs it.
    Never print tokens, cookies, or authorization headers.
-8. Report safe errors clearly. Do not recommend weakening auth or disabling
+10. Report safe errors clearly. Do not recommend weakening auth or disabling
    production checks.
 
 ## Choose The Surface
@@ -68,6 +80,13 @@ this release.
 - Speak as someone operating the app, not as someone explaining Quater internals.
   For example, say "I can share a frustration and read stats" instead of "the
   manifest exposes two action objects."
+- Do not show hidden operational details in normal replies: command lines,
+  request metadata, raw manifests, argument hashes, internal URLs, or token
+  handling. Mention an argument hash only when the user needs it for approval.
+- If the app requires client-provided attribution, use `source="cli"` for
+  Quater CLI calls and direct HTTP calls made by the agent. Use `source="mcp"`
+  only for MCP tool calls. Keep agent identity in `agent_name`, for example
+  `agent_name="Codex"`.
 - Do not pass framework internals such as `request`, `auth`, `state`, resources,
   or database sessions as tool/action arguments.
 - Do not retry non-idempotent operations after timeouts unless the user confirms
