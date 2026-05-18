@@ -12,6 +12,18 @@ Discover the exposed surface before calling anything.
 If the current agent does not support skills, treat this file and the linked
 references as project instructions.
 
+## Live Docs
+
+Use the bundled references for the immediate operating rules. Use the live
+Quater docs when you need the full explanation or exact framework behavior:
+
+- Overview: https://quater.devilsautumn.com/en/latest/
+- MCP tools: https://quater.devilsautumn.com/en/latest/mcp
+- CLI actions: https://quater.devilsautumn.com/en/latest/actions
+- Auth model: https://quater.devilsautumn.com/en/latest/auth-model
+- Security: https://quater.devilsautumn.com/en/latest/security
+- Deployment: https://quater.devilsautumn.com/en/latest/deployment
+
 ## Operating Workflow
 
 1. Identify the available access path: MCP URL, remote CLI name, local

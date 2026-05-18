@@ -3,6 +3,8 @@
 Use MCP when the user gives a Quater MCP URL or asks an agent to call Quater
 tools. Quater's MCP endpoint is normally:
 
+Full docs: https://quater.devilsautumn.com/en/latest/mcp
+
 ```text
 https://example.com/mcp
 ```

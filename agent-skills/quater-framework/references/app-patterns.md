@@ -2,6 +2,12 @@
 
 Use public imports from `quater`.
 
+Full docs:
+
+- Routes and handlers: https://quater.devilsautumn.com/en/latest/routes-handlers
+- Application reference: https://quater.devilsautumn.com/en/latest/reference/application
+- Parameter reference: https://quater.devilsautumn.com/en/latest/reference/parameters
+
 ```python
 from quater import Quater
 

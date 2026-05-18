@@ -2,6 +2,11 @@
 
 Quater has layered auth. Keep the layers separate.
 
+Full docs:
+
+- Auth model: https://quater.devilsautumn.com/en/latest/auth-model
+- Security: https://quater.devilsautumn.com/en/latest/security
+
 ## MCP
 
 `mcp_auth` protects the MCP surface:

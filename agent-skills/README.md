@@ -7,6 +7,16 @@ This folder contains portable agent skills for Quater.
 - `quater-framework`: build, test, and deploy applications with the Quater
   Python framework.
 
+The full Quater documentation lives at:
+
+```text
+https://quater.devilsautumn.com/en/latest/
+```
+
+Use the docs as the canonical reference. The skill references are intentionally
+short so agents can load the exact operating guidance they need without pulling
+the whole manual into context.
+
 Each skill is a standalone folder with `SKILL.md` and optional references. Skill
 aware agents can install the folder directly from this repository. Other agents
 can use the same `SKILL.md` content as project or system instructions.

@@ -3,6 +3,8 @@
 Use Quater CLI actions when the `quater` command is available or the user has a
 configured remote.
 
+Full docs: https://quater.devilsautumn.com/en/latest/actions
+
 ## Local Actions
 
 Local actions import the app in process and do not require a running server:

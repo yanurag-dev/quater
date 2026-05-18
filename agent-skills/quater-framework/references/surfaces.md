@@ -3,6 +3,13 @@
 Quater routes are normal HTTP routes first. MCP and CLI exposure are explicit
 opt-ins.
 
+Full docs:
+
+- Surfaces: https://quater.devilsautumn.com/en/latest/surfaces
+- MCP tools: https://quater.devilsautumn.com/en/latest/mcp
+- CLI actions: https://quater.devilsautumn.com/en/latest/actions
+- Auth model: https://quater.devilsautumn.com/en/latest/auth-model
+
 ```python
 @app.get(
     "/orders/{order_id}",

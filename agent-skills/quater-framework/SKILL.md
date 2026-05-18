@@ -12,6 +12,19 @@ HTTP endpoints, MCP tools, and CLI actions.
 If the current agent does not support skills, treat this file and the linked
 references as project instructions.
 
+## Live Docs
+
+Use these docs as the canonical framework reference:
+
+- Overview: https://quater.devilsautumn.com/en/latest/
+- Quickstart: https://quater.devilsautumn.com/en/latest/quickstart
+- Routes and handlers: https://quater.devilsautumn.com/en/latest/routes-handlers
+- HTTP, MCP, and CLI surfaces: https://quater.devilsautumn.com/en/latest/surfaces
+- Resources and state: https://quater.devilsautumn.com/en/latest/resources
+- Testing: https://quater.devilsautumn.com/en/latest/testing
+- Deployment: https://quater.devilsautumn.com/en/latest/deployment
+- API reference: https://quater.devilsautumn.com/en/latest/reference/
+
 ## Development Workflow
 
 1. Inspect the existing app structure before changing code.
