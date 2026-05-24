@@ -33,6 +33,7 @@ production-facing config, and adapter response safety.
 - Changed shutdown hook failures to mark lifespan as failed instead of started.
 - Changed tool and action registry access to compile dirty routes once and keep
   the HTTP router current.
+- Removed duplicate request security-context resolution from the HTTP hot path.
 
 ## 0.1.0a1
 

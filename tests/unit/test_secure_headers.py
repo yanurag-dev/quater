@@ -3,6 +3,9 @@ from __future__ import annotations
 import pytest
 
 from quater import Quater, RedirectResponse, Request, Response
+from quater import security as security_module
+from quater.config import AppConfig
+from quater.security import RequestSecurityContext
 
 
 def response_headers(response: Response) -> dict[str, str]:
@@ -39,7 +42,10 @@ async def test_secure_headers_are_added_to_unexpected_error_responses() -> None:
 
 @pytest.mark.asyncio
 async def test_hsts_uses_forwarded_proto_only_from_trusted_proxy() -> None:
-    app = Quater(trusted_proxies=["10.0.0.0/8"])
+    app = Quater(
+        allowed_hosts=["internal"],
+        trusted_proxies=["10.0.0.0/8"],
+    )
 
     trusted_response = await app.handle(
         Request(
@@ -74,6 +80,57 @@ async def test_security_can_be_disabled_for_local_or_embedded_usage() -> None:
     assert response.status_code == 404
     assert "x-content-type-options" not in headers
     assert "x-frame-options" not in headers
+
+
+@pytest.mark.asyncio
+async def test_request_security_context_is_resolved_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    original_resolve = security_module.resolve_request_security_context
+
+    def resolve_once(
+        request: Request,
+        config: AppConfig,
+    ) -> RequestSecurityContext:
+        nonlocal calls
+        calls += 1
+        return original_resolve(request, config)
+
+    monkeypatch.setattr(
+        security_module,
+        "resolve_request_security_context",
+        resolve_once,
+    )
+
+    app = Quater()
+
+    @app.get("/ok")
+    async def ok() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = await app.handle(
+        Request(method="GET", path="/ok", headers={"host": "localhost"})
+    )
+
+    assert response.status_code == 200
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_early_request_security_errors_are_finalized_safely() -> None:
+    response = await Quater().handle(
+        Request(
+            method="POST",
+            path="/items",
+            headers={"content-length": "bad"},
+        )
+    )
+
+    headers = response_headers(response)
+    assert response.status_code == 400
+    assert response.body == b"Invalid Content-Length header"
+    assert headers["x-content-type-options"] == "nosniff"
 
 
 @pytest.mark.asyncio

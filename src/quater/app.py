@@ -74,7 +74,6 @@ from quater.security import (
     RequestSecurityContext,
     add_security_headers,
     prepare_request_security,
-    resolve_request_security_context,
 )
 from quater.tools.descriptions import (
     normalize_route_description,
@@ -717,7 +716,11 @@ class Quater:
         started_at = time.perf_counter()
         request.app = self
         ensure_request_id(request, self.config)
-        context = resolve_request_security_context(request, self.config)
+        context = RequestSecurityContext(
+            host=None,
+            scheme=request.scheme.lower(),
+            client=request.client,
+        )
         is_mcp_request = request.path == MCP_PATH
         router: Router | None = None
         match: Match | None = None
