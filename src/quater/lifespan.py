@@ -75,7 +75,7 @@ class LifespanManager:
             for hook in reversed(self._shutdown_hooks):
                 await hook()
         except BaseException:
-            self._state = LifespanState.STARTED
+            self._state = LifespanState.FAILED
             raise
         self._state = LifespanState.STOPPED
 

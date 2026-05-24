@@ -77,6 +77,33 @@ async def test_startup_failure_stops_later_hooks_and_never_runs_shutdown() -> No
 
 
 @pytest.mark.asyncio
+async def test_shutdown_failure_does_not_run_cleanup_hooks_again() -> None:
+    class ShutdownFailed(Exception):
+        pass
+
+    app = Quater()
+    events: list[str] = []
+
+    @app.on_shutdown
+    async def shutdown_one() -> None:
+        events.append("shutdown_one")
+
+    @app.on_shutdown
+    async def shutdown_two() -> None:
+        events.append("shutdown_two")
+        raise ShutdownFailed
+
+    await app.startup()
+
+    with pytest.raises(ShutdownFailed):
+        await app.shutdown()
+
+    await app.shutdown()
+
+    assert events == ["shutdown_two"]
+
+
+@pytest.mark.asyncio
 async def test_lifespan_hooks_cannot_be_registered_after_startup_begins() -> None:
     app = Quater()
 
