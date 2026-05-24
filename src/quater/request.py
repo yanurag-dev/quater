@@ -20,6 +20,13 @@ RequestBody: TypeAlias = bytes | BodyReader | None
 _UNSET = object()
 
 
+class _BodyReadFailure:
+    __slots__ = ("exception",)
+
+    def __init__(self, exception: Exception) -> None:
+        self.exception = exception
+
+
 class Request:
     """Normalized request data passed to handlers.
 
@@ -132,12 +139,22 @@ class Request:
         return state
 
     async def body(self) -> bytes:
-        if self._body_cache is _UNSET:
-            data = await self._body_reader()
+        cached = self._body_cache
+        if isinstance(cached, _BodyReadFailure):
+            raise cached.exception
+        if cached is _UNSET:
+            try:
+                data = await self._body_reader()
+            except Exception as exc:
+                self._body_cache = _BodyReadFailure(exc)
+                raise
             if self.max_body_size is not None and len(data) > self.max_body_size:
-                raise PayloadTooLargeError
+                error = PayloadTooLargeError()
+                self._body_cache = _BodyReadFailure(error)
+                raise error
             self._body_cache = data
-        return cast(bytes, self._body_cache)
+            return data
+        return cast(bytes, cached)
 
     async def json(self) -> Any:
         if self._json_cache is _UNSET:

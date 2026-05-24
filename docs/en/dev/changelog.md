@@ -28,6 +28,8 @@ production-facing config, and adapter response safety.
 - Changed ASGI request body reads to reject client disconnects instead of
   passing partial request bodies to handlers.
 - Changed route auth to run even when a request already has an auth context.
+- Changed request body reads to cache read and size-limit failures instead of
+  invoking the body reader again.
 
 ## 0.1.0a1
 

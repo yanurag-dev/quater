@@ -68,3 +68,46 @@ async def test_body_size_limit_is_checked_before_json_decode() -> None:
         await request.json()
 
     assert exc_info.value.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_body_size_limit_failure_is_cached_without_re_reading() -> None:
+    calls = 0
+
+    async def read_body() -> bytes:
+        nonlocal calls
+        calls += 1
+        return b"too large" if calls == 1 else b"ok"
+
+    request = Request(
+        method="POST",
+        path="/items",
+        body=read_body,
+        max_body_size=4,
+    )
+
+    with pytest.raises(PayloadTooLargeError):
+        await request.body()
+    with pytest.raises(PayloadTooLargeError):
+        await request.body()
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_body_reader_failure_is_cached_without_re_reading() -> None:
+    calls = 0
+
+    async def read_body() -> bytes:
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("read failed")
+
+    request = Request(method="POST", path="/items", body=read_body)
+
+    with pytest.raises(RuntimeError, match="read failed"):
+        await request.body()
+    with pytest.raises(RuntimeError, match="read failed"):
+        await request.body()
+
+    assert calls == 1
