@@ -5,7 +5,7 @@ period.
 
 ## Prerequisites
 
-Read [Public API](/en/latest/api). This page matters when you decide what to
+Read [Public API](/en/dev/api). This page matters when you decide what to
 import, wrap, or extend in application code.
 
 ## Current Promise
@@ -30,7 +30,7 @@ application code.
 ## Public Import Boundary
 
 Use names exported from `quater` and documented in the
-[Reference](/en/latest/reference/):
+[Reference](/en/dev/reference/):
 
 - application objects: `Quater`, `RouteGroup`, `AppConfig`, `CORSConfig`
 - request and state: `Request`, `State`
@@ -74,7 +74,7 @@ directly on them yet. Use `quater actions ...` and `quater call ...`.
 
 ## Changelog And Migration
 
-Quater release notes live in [Changelog / Release Notes](/en/latest/changelog).
+Quater release notes live in [Changelog / Release Notes](/en/dev/changelog).
 While the project is pre-release, pin the exact version you test:
 
 ```bash
@@ -98,7 +98,7 @@ before-and-after snippet.
 
 ## Also See
 
-- [Public API](/en/latest/api): what application code should import.
-- [Reference](/en/latest/reference/): exact signatures.
-- [Known Limitations](/en/latest/known-limitations): current pre-release gaps.
-- [Deployment](/en/latest/deployment): direct server risks and production checks.
+- [Public API](/en/dev/api): what application code should import.
+- [Reference](/en/dev/reference/): exact signatures.
+- [Known Limitations](/en/dev/known-limitations): current pre-release gaps.
+- [Deployment](/en/dev/deployment): direct server risks and production checks.

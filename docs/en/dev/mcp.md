@@ -5,7 +5,7 @@ for AI agents.
 
 ## Prerequisites
 
-Read the [Quickstart](/en/latest/quickstart) and create an app with `mcp_auth`.
+Read the [Quickstart](/en/dev/quickstart) and create an app with `mcp_auth`.
 You should understand route `auth=` before exposing sensitive tools.
 
 ## What MCP Means Here
@@ -300,8 +300,8 @@ silently hide audit failures.
 
 ## Also See
 
-- [Actions and CLI](/en/latest/actions): use the same approval hook for CLI.
-- [Security](/en/latest/security): review MCP origin validation and token rules.
-- [Testing](/en/latest/testing): test tools with `client.mcp`.
-- [Reference: Auth](/en/latest/reference/auth): inspect `AuthRequest` and
+- [Actions and CLI](/en/dev/actions): use the same approval hook for CLI.
+- [Security](/en/dev/security): review MCP origin validation and token rules.
+- [Testing](/en/dev/testing): test tools with `client.mcp`.
+- [Reference: Auth](/en/dev/reference/auth): inspect `AuthRequest` and
   `ApprovalRequest`.

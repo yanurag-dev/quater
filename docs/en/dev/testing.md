@@ -91,7 +91,9 @@ async def test_query_params_are_bound() -> None:
     assert response.json() == {"q": "orders", "page": 2, "tags": ["paid", "vip"]}
 ```
 
-Use `json=` for JSON bodies. Do not pass `json=` and `content=` together.
+Use `json=` for JSON bodies, `content=` for raw request bodies, and `data=` or
+`files=` for form and upload tests. You may combine `data=` with `files=`, but
+other body styles are mutually exclusive.
 
 Expected error:
 
@@ -333,13 +335,17 @@ assert bad_origin.status_code == 403
 `Use either json or content, not both`
 : Pick one body input style.
 
+`Use one request body style`
+: Use only one of `json=`, `content=`, or `data=`. Combine `data=` with
+  `files=` only when testing multipart uploads.
+
 `Malformed JSON body`
 : The handler called `await request.json()` or bound a body parameter, but the
   request body was not valid JSON.
 
 ## Also See
 
-- [Resources and Injection](/en/latest/resources): understand cleanup behavior.
-- [MCP](/en/latest/mcp): understand what `client.mcp` sends.
-- [Reference: Testing](/en/latest/reference/testing): exact client signatures.
-- [Deployment](/en/latest/deployment): when you need a real server test.
+- [Resources and Injection](/en/dev/resources): understand cleanup behavior.
+- [MCP](/en/dev/mcp): understand what `client.mcp` sends.
+- [Reference: Testing](/en/dev/reference/testing): exact client signatures.
+- [Deployment](/en/dev/deployment): when you need a real server test.

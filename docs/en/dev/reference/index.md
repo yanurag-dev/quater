@@ -4,8 +4,8 @@ This reference documents every public symbol exported from `quater`.
 
 ## Prerequisites
 
-Use this section after reading [Quickstart](/en/latest/quickstart) and
-[Public API](/en/latest/api). The reference tells you exact names and defaults;
+Use this section after reading [Quickstart](/en/dev/quickstart) and
+[Public API](/en/dev/api). The reference tells you exact names and defaults;
 the guides show how to design an app.
 
 ## Public Imports
@@ -49,6 +49,6 @@ on it.
 
 ## Also See
 
-- [Stability](/en/latest/stability): import boundary rules during pre-release.
-- [Public API](/en/latest/api): human explanation before the reference.
-- [Quickstart](/en/latest/quickstart): first working app.
+- [Stability](/en/dev/stability): import boundary rules during pre-release.
+- [Public API](/en/dev/api): human explanation before the reference.
+- [Quickstart](/en/dev/quickstart): first working app.

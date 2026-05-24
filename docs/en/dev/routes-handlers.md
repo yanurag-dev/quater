@@ -5,7 +5,7 @@ code.
 
 ## Prerequisites
 
-Read [Quickstart](/en/latest/quickstart). You should know what an async Python
+Read [Quickstart](/en/dev/quickstart). You should know what an async Python
 function is.
 
 ## What A Route Means In Quater
@@ -152,9 +152,9 @@ app.include(orders)
 
 ## Also See
 
-- [Parameters Reference](/en/latest/reference/parameters): exact marker
+- [Parameters Reference](/en/dev/reference/parameters): exact marker
   signatures.
-- [HTTP, MCP, and CLI Surfaces](/en/latest/surfaces): how one route can opt into
+- [HTTP, MCP, and CLI Surfaces](/en/dev/surfaces): how one route can opt into
   other access paths.
-- [Resources and State](/en/latest/resources): inject values that should never
+- [Resources and State](/en/dev/resources): inject values that should never
   come from the caller.

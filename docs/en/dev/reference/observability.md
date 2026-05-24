@@ -4,8 +4,8 @@ This page documents access-log and MCP audit event types.
 
 ## Prerequisites
 
-Read [Security](/en/latest/security#request-ids-and-access-logs) and
-[MCP](/en/latest/mcp#auditing). These hooks report framework events; they do
+Read [Security](/en/dev/security#request-ids-and-access-logs) and
+[MCP](/en/dev/mcp#auditing). These hooks report framework events; they do
 not replace auth or approval policy.
 
 ```python
@@ -140,6 +140,6 @@ MCP audit hook failure
 
 ## Also See
 
-- [Security](/en/latest/security): request ids and access logging.
-- [MCP](/en/latest/mcp#auditing): MCP audit behavior.
-- [Testing](/en/latest/testing): assert emitted events in app tests.
+- [Security](/en/dev/security): request ids and access logging.
+- [MCP](/en/dev/mcp#auditing): MCP audit behavior.
+- [Testing](/en/dev/testing): assert emitted events in app tests.

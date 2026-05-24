@@ -83,7 +83,7 @@ default model is opt-in. You choose which operations become tools or actions.
 
 ## Also See
 
-- [HTTP, MCP, and CLI Surfaces](/en/latest/surfaces): how the access paths fit
+- [HTTP, MCP, and CLI Surfaces](/en/dev/surfaces): how the access paths fit
   together.
-- [Auth Model](/en/latest/auth-model): where the auth boundaries run.
-- [MCP Tools](/en/latest/mcp): how agents discover and call route-backed tools.
+- [Auth Model](/en/dev/auth-model): where the auth boundaries run.
+- [MCP Tools](/en/dev/mcp): how agents discover and call route-backed tools.

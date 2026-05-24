@@ -4,7 +4,7 @@ This page documents `Resource`, the request-scoped injection primitive.
 
 ## Prerequisites
 
-Read [Resources and Injection](/en/latest/resources). Use `Resource` for
+Read [Resources and Injection](/en/dev/resources). Use `Resource` for
 app-owned values that should not come from HTTP, MCP, or CLI arguments.
 
 ```python
@@ -100,6 +100,6 @@ finishes.
 
 ## Also See
 
-- [Resources and Injection](/en/latest/resources): full lifecycle and examples.
+- [Resources and Injection](/en/dev/resources): full lifecycle and examples.
 - [Reference: Application](./application#symbol-quater): `inject` route option.
-- [Testing](/en/latest/testing#resources): testing resource cleanup.
+- [Testing](/en/dev/testing#resources): testing resource cleanup.

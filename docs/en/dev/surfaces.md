@@ -5,8 +5,8 @@ CLI without turning into three implementations.
 
 ## Prerequisites
 
-Read [Why Quater Exists](/en/latest/why-quater) and
-[Routes and Handlers](/en/latest/routes-handlers).
+Read [Why Quater Exists](/en/dev/why-quater) and
+[Routes and Handlers](/en/dev/routes-handlers).
 
 ## The Model
 
@@ -116,6 +116,6 @@ against a hosted app.
 
 ## Also See
 
-- [MCP Tools](/en/latest/mcp): agent-facing tool details.
-- [Actions and CLI](/en/latest/actions): local and remote action details.
-- [Auth Model](/en/latest/auth-model): exact auth order across surfaces.
+- [MCP Tools](/en/dev/mcp): agent-facing tool details.
+- [Actions and CLI](/en/dev/actions): local and remote action details.
+- [Auth Model](/en/dev/auth-model): exact auth order across surfaces.

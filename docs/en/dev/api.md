@@ -5,7 +5,7 @@ reference pages for exact signatures.
 
 ## Prerequisites
 
-Read [Quickstart](/en/latest/quickstart). This page assumes you know what a
+Read [Quickstart](/en/dev/quickstart). This page assumes you know what a
 Quater route is and how handlers return responses.
 
 ## Public Imports
@@ -88,7 +88,7 @@ Important constructor options:
 - `action_approval`: required when any exposed route has `needs_approval=True`.
 - `access_logger`: receives structured access events.
 
-See [Application Reference](/en/latest/reference/application) for every option,
+See [Application Reference](/en/dev/reference/application) for every option,
 type, default, and exception.
 
 Surface auth does not replace route `auth=`. Use route or group auth for
@@ -184,10 +184,10 @@ async def update_order(
 [msgspec](https://jcristharif.com/msgspec/). Plain `dict` is fine for dynamic
 responses.
 
-Use [`Form`](/en/latest/reference/parameters#symbol-form) for scalar form
-fields and [`File`](/en/latest/reference/parameters#symbol-file) for multipart
+Use [`Form`](/en/dev/reference/parameters#symbol-form) for scalar form
+fields and [`File`](/en/dev/reference/parameters#symbol-file) for multipart
 uploads. File parameters bind to
-[`UploadFile`](/en/latest/reference/request#symbol-uploadfile), `bytes`,
+[`UploadFile`](/en/dev/reference/request#symbol-uploadfile), `bytes`,
 `list[UploadFile]`, or `list[bytes]`.
 
 ```python
@@ -395,10 +395,10 @@ must exist.
 
 ## Also See
 
-- [Routes and Handlers](/en/latest/routes-handlers): route and binding concepts.
-- [Middleware and Errors](/en/latest/middleware-errors): middleware and exception
+- [Routes and Handlers](/en/dev/routes-handlers): route and binding concepts.
+- [Middleware and Errors](/en/dev/middleware-errors): middleware and exception
   handlers in real use.
-- [Reference](/en/latest/reference/): exact signatures and defaults.
-- [Resources and Injection](/en/latest/resources): resource lifetimes.
-- [Security](/en/latest/security): auth and production defaults.
-- [Testing](/en/latest/testing): test the public API through `TestClient`.
+- [Reference](/en/dev/reference/): exact signatures and defaults.
+- [Resources and Injection](/en/dev/resources): resource lifetimes.
+- [Security](/en/dev/security): auth and production defaults.
+- [Testing](/en/dev/testing): test the public API through `TestClient`.

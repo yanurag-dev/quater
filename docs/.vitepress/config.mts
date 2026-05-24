@@ -13,7 +13,7 @@ type DocsVersion = {
 }
 
 const language = 'en'
-const latestDirectory = 'latest'
+const currentDirectory = 'dev'
 const docsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const versionRoot = path.join(docsRoot, language)
 
@@ -33,16 +33,16 @@ function compareReleaseVersions(left: string, right: string): number {
 
 function readDocsVersions(): DocsVersion[] {
   const releases = readdirSync(versionRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== latestDirectory)
+    .filter((entry) => entry.isDirectory() && entry.name !== currentDirectory)
     .map((entry) => entry.name)
     .sort(compareReleaseVersions)
 
   return [
     {
-      label: 'Latest',
-      directory: latestDirectory,
-      base: `/${language}/${latestDirectory}/`,
-      index: `/${language}/${latestDirectory}/index`,
+      label: 'Dev',
+      directory: currentDirectory,
+      base: `/${language}/${currentDirectory}/`,
+      index: `/${language}/${currentDirectory}/index`,
     },
     ...releases.map((release) => ({
       label: release,
@@ -113,7 +113,7 @@ function sidebarFor(version: DocsVersion): DefaultTheme.SidebarItem[] {
 }
 
 const docsVersions = readDocsVersions()
-const latestDocs = docsVersions[0]
+const currentDocs = docsVersions[0]
 const versionSidebars = Object.fromEntries(
   docsVersions.map((version) => [version.base, sidebarFor(version)]),
 ) as DefaultTheme.SidebarMulti
@@ -123,14 +123,14 @@ const versionItems = docsVersions.map((version) => ({
   link: version.index,
 }))
 
-const latestBase = latestDocs?.base ?? `/${language}/${latestDirectory}/`
+const currentBase = currentDocs?.base ?? `/${language}/${currentDirectory}/`
 
 const nav: DefaultTheme.NavItem[] = [
-  { text: 'Guide', link: `${latestBase}quickstart` },
-  { text: 'Concepts', link: `${latestBase}surfaces` },
-  { text: 'CLI', link: `${latestBase}actions` },
-  { text: 'MCP', link: `${latestBase}mcp` },
-  { text: 'Reference', link: `${latestBase}reference/` },
+  { text: 'Guide', link: `${currentBase}quickstart` },
+  { text: 'Concepts', link: `${currentBase}surfaces` },
+  { text: 'CLI', link: `${currentBase}actions` },
+  { text: 'MCP', link: `${currentBase}mcp` },
+  { text: 'Reference', link: `${currentBase}reference/` },
   {
     text: 'Version',
     items: versionItems,

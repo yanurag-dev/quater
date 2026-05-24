@@ -7,7 +7,7 @@ actions.
 ## Prerequisites
 
 You should know async Python, HTTP handlers, and basic type annotations. You do
-not need prior MCP knowledge; the [MCP guide](/en/latest/mcp) starts with the
+not need prior MCP knowledge; the [MCP guide](/en/dev/mcp) starts with the
 protocol model.
 
 ## The Short Version
@@ -29,7 +29,7 @@ Direct backend access does not mean broad backend access. Quater keeps each
 surface behind its own boundary: `mcp_auth` protects MCP, `cli_auth` protects
 CLI, and route `auth=` protects the handler itself.
 
-Read [Why Quater Exists](/en/latest/why-quater) for the full problem statement
+Read [Why Quater Exists](/en/dev/why-quater) for the full problem statement
 and design motivation.
 
 ### Non-goals
@@ -50,20 +50,20 @@ operational safety, and low request overhead.
 
 The docs are split by how a developer learns the framework:
 
-- [Quickstart](/en/latest/quickstart) gets a working app running.
-- [Why Quater Exists](/en/latest/why-quater) explains the problem behind the
+- [Quickstart](/en/dev/quickstart) gets a working app running.
+- [Why Quater Exists](/en/dev/why-quater) explains the problem behind the
   framework.
-- Core concepts explain [routes](/en/latest/routes-handlers),
-  [surfaces](/en/latest/surfaces), [auth](/en/latest/auth-model),
-  [resources](/en/latest/resources), and
-  [middleware](/en/latest/middleware-errors).
-- Guides cover [MCP](/en/latest/mcp), [Actions and CLI](/en/latest/actions),
-  [Testing](/en/latest/testing), [Deployment](/en/latest/deployment), and
-  [Security](/en/latest/security).
-- [Reference](/en/latest/reference/) gives exact signatures and defaults.
-- Project notes cover [stability](/en/latest/stability),
-  [release notes](/en/latest/changelog), and
-  [known limitations](/en/latest/known-limitations).
+- Core concepts explain [routes](/en/dev/routes-handlers),
+  [surfaces](/en/dev/surfaces), [auth](/en/dev/auth-model),
+  [resources](/en/dev/resources), and
+  [middleware](/en/dev/middleware-errors).
+- Guides cover [MCP](/en/dev/mcp), [Actions and CLI](/en/dev/actions),
+  [Testing](/en/dev/testing), [Deployment](/en/dev/deployment), and
+  [Security](/en/dev/security).
+- [Reference](/en/dev/reference/) gives exact signatures and defaults.
+- Project notes cover [stability](/en/dev/stability),
+  [release notes](/en/dev/changelog), and
+  [known limitations](/en/dev/known-limitations).
 
 Read the guides first when learning. Use the reference when you already know
 which object or option you need.
@@ -166,22 +166,22 @@ flowchart LR
 
 ## Reading Path
 
-1. [Quickstart](/en/latest/quickstart): install Quater, run an app, call HTTP,
+1. [Quickstart](/en/dev/quickstart): install Quater, run an app, call HTTP,
    MCP, and CLI.
-2. [Why Quater Exists](/en/latest/why-quater): understand the human-and-agent
+2. [Why Quater Exists](/en/dev/why-quater): understand the human-and-agent
    backend model.
-3. [Routes and Handlers](/en/latest/routes-handlers): learn how Quater maps
+3. [Routes and Handlers](/en/dev/routes-handlers): learn how Quater maps
    calls to your code.
-4. [HTTP, MCP, and CLI Surfaces](/en/latest/surfaces): understand the access
+4. [HTTP, MCP, and CLI Surfaces](/en/dev/surfaces): understand the access
    paths.
-5. [Auth Model](/en/latest/auth-model): review the layered auth rules.
-6. [Resources and State](/en/latest/resources): add database sessions and other
+5. [Auth Model](/en/dev/auth-model): review the layered auth rules.
+6. [Resources and State](/en/dev/resources): add database sessions and other
    per-request values.
-7. [MCP](/en/latest/mcp) and [Actions and CLI](/en/latest/actions): expose
+7. [MCP](/en/dev/mcp) and [Actions and CLI](/en/dev/actions): expose
    selected operations to agents and MCP clients.
-8. [Security](/en/latest/security), [Deployment](/en/latest/deployment), and
-   [Testing](/en/latest/testing): prepare real apps.
-9. [Reference](/en/latest/reference/): look up signatures and exact defaults.
+8. [Security](/en/dev/security), [Deployment](/en/dev/deployment), and
+   [Testing](/en/dev/testing): prepare real apps.
+9. [Reference](/en/dev/reference/): look up signatures and exact defaults.
 
 ## What Can Go Wrong
 
@@ -199,14 +199,14 @@ flowchart LR
 
 ## Known Limitations
 
-See [Known Limitations](/en/latest/known-limitations) for the current pre-release
+See [Known Limitations](/en/dev/known-limitations) for the current pre-release
 gaps, including WebSockets, built-in ORM support, background jobs, rate limiting,
 MCP streaming, and OpenAPI depth.
 
 ## Also See
 
-- [Quickstart](/en/latest/quickstart): build the first working app.
-- [Why Quater Exists](/en/latest/why-quater): understand the problem Quater is
+- [Quickstart](/en/dev/quickstart): build the first working app.
+- [Why Quater Exists](/en/dev/why-quater): understand the problem Quater is
   built around.
-- [Security](/en/latest/security): understand the auth boundaries shown above.
-- [Reference](/en/latest/reference/): check exact signatures and defaults.
+- [Security](/en/dev/security): understand the auth boundaries shown above.
+- [Reference](/en/dev/reference/): check exact signatures and defaults.

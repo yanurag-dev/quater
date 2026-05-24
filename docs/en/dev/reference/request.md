@@ -5,7 +5,7 @@ from handlers.
 
 ## Prerequisites
 
-Read [Public API](/en/latest/api#binding) for binding rules. Use `Request` when
+Read [Public API](/en/dev/api#binding) for binding rules. Use `Request` when
 you need headers, cookies, raw body access, auth, state, or call-source context.
 
 ```python
@@ -295,6 +295,6 @@ session_id = request.cookies.get("session")
 
 ## Also See
 
-- [Public API](/en/latest/api#request-and-context): usage patterns.
-- [Security](/en/latest/security): request id validation and access logs.
-- [Testing](/en/latest/testing): constructing requests through `TestClient`.
+- [Public API](/en/dev/api#request-and-context): usage patterns.
+- [Security](/en/dev/security): request id validation and access logs.
+- [Testing](/en/dev/testing): constructing requests through `TestClient`.

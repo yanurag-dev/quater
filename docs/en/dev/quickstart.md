@@ -287,11 +287,11 @@ in this release.
 
 ## Also See
 
-- [Why Quater Exists](/en/latest/why-quater): understand the backend model behind
+- [Why Quater Exists](/en/dev/why-quater): understand the backend model behind
   this example.
-- [Routes and Handlers](/en/latest/routes-handlers): learn route binding and
+- [Routes and Handlers](/en/dev/routes-handlers): learn route binding and
   handler rules.
-- [Actions and CLI](/en/latest/actions): use dry-run, approval, remotes, and
+- [Actions and CLI](/en/dev/actions): use dry-run, approval, remotes, and
   machine-readable output.
-- [MCP](/en/latest/mcp): understand `mcp_auth`, tool schemas, and MCP errors.
-- [Testing](/en/latest/testing): test this app without opening a port.
+- [MCP](/en/dev/mcp): understand `mcp_auth`, tool schemas, and MCP errors.
+- [Testing](/en/dev/testing): test this app without opening a port.

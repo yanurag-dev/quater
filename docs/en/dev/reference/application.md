@@ -5,8 +5,8 @@ This page documents `Quater`, `RouteGroup`, `AppConfig`, `CORSConfig`, and
 
 ## Prerequisites
 
-Read [Public API](/en/latest/api) for the route model and
-[Deployment](/en/latest/deployment) for production settings.
+Read [Public API](/en/dev/api) for the route model and
+[Deployment](/en/dev/deployment) for production settings.
 
 ```python
 from quater import AppConfig, CORSConfig, Quater, RouteGroup, __version__
@@ -351,6 +351,6 @@ Expected output:
 
 ## Also See
 
-- [Public API](/en/latest/api): usage examples for these objects.
-- [Security](/en/latest/security): host, CORS, and production defaults.
-- [Deployment](/en/latest/deployment): server options and production checks.
+- [Public API](/en/dev/api): usage examples for these objects.
+- [Security](/en/dev/security): host, CORS, and production defaults.
+- [Deployment](/en/dev/deployment): server options and production checks.

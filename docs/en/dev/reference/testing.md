@@ -4,7 +4,7 @@ This page documents `TestClient`, `MCPTestClient`, and `TestResponse`.
 
 ## Prerequisites
 
-Read [Testing Quater Apps](/en/latest/testing). The clients are async and work
+Read [Testing Quater Apps](/en/dev/testing). The clients are async and work
 well with [pytest-asyncio](https://pytest-asyncio.readthedocs.io/).
 
 ```python
@@ -61,6 +61,8 @@ request(
     cookies: Mapping[str, str] | None = None,
     json: object = None,
     content: bytes | bytearray | memoryview | str | None = None,
+    data: FormDataInput | None = None,
+    files: FilesInput | None = None,
 ) -> TestResponse
 ```
 
@@ -154,9 +156,13 @@ tools_call(
 `Use either json or content, not both`
 : Pick one body input.
 
+`Use one request body style`
+: Use only one of `json=`, `content=`, or `data=`. You may combine `data=`
+  with `files=` for multipart upload tests.
+
 ## Also See
 
-- [Testing Quater Apps](/en/latest/testing): examples across auth, resources,
+- [Testing Quater Apps](/en/dev/testing): examples across auth, resources,
   cookies, streams, and MCP.
 - [Reference: Request](./request): request object created by the client.
 - [Reference: Responses](./responses): response conversion used in tests.

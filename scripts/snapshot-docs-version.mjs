@@ -6,15 +6,15 @@ const force = process.argv.includes('--force')
 
 if (
   !requestedVersion ||
-  !/^v?\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?$/.test(requestedVersion)
+  !/^v?\d+\.\d+(?:\.\d+)?(?:a\d+|b\d+|rc\d+)?(?:-[0-9A-Za-z.-]+)?$/.test(requestedVersion)
 ) {
-  console.error('Usage: npm run docs:snapshot -- 0.1 [--force]')
+  console.error('Usage: npm run docs:snapshot -- 0.1.0a2 [--force]')
   process.exit(1)
 }
 
 const version = requestedVersion.replace(/^v/, '')
 const root = process.cwd()
-const source = path.join(root, 'docs', 'en', 'latest')
+const source = path.join(root, 'docs', 'en', 'dev')
 const target = path.join(root, 'docs', 'en', version)
 
 async function pathExists(targetPath) {
@@ -27,7 +27,7 @@ async function pathExists(targetPath) {
 }
 
 if (!(await pathExists(source))) {
-  console.error('docs/en/latest does not exist.')
+  console.error('docs/en/dev does not exist.')
   process.exit(1)
 }
 

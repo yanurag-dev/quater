@@ -5,7 +5,7 @@ signed cookies.
 
 ## Prerequisites
 
-Read [Security](/en/latest/security). Auth hooks are your application policy;
+Read [Security](/en/dev/security). Auth hooks are your application policy;
 Quater only defines when they run and what they receive.
 
 ```python
@@ -214,6 +214,6 @@ Raises `ImproperlyConfigured` if secrets are empty.
 
 ## Also See
 
-- [Security](/en/latest/security): auth ordering across surfaces.
-- [MCP](/en/latest/mcp#auth-layering): tool-call auth sequence.
-- [Actions and CLI](/en/latest/actions#approval): dry-run and approval flow.
+- [Security](/en/dev/security): auth ordering across surfaces.
+- [MCP](/en/dev/mcp#auth-layering): tool-call auth sequence.
+- [Actions and CLI](/en/dev/actions#approval): dry-run and approval flow.

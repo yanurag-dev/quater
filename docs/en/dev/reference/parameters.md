@@ -5,7 +5,7 @@ This page documents request binding markers: `Path`, `Query`, `Body`, `Form`,
 
 ## Prerequisites
 
-Read [Public API](/en/latest/api#binding). Markers are needed when inference is
+Read [Public API](/en/dev/api#binding). Markers are needed when inference is
 not enough, or when you want aliases and schema descriptions.
 
 ```python
@@ -264,6 +264,6 @@ Expected body:
 
 ## Also See
 
-- [Public API](/en/latest/api#binding): binding order and mental model.
-- [Actions and CLI](/en/latest/actions#argument-binding): marker behavior in CLI.
-- [MCP](/en/latest/mcp#tool-schemas): marker behavior in tool schemas.
+- [Public API](/en/dev/api#binding): binding order and mental model.
+- [Actions and CLI](/en/dev/actions#argument-binding): marker behavior in CLI.
+- [MCP](/en/dev/mcp#tool-schemas): marker behavior in tool schemas.

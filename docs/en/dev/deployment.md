@@ -4,7 +4,7 @@ This page explains how to run a Quater app safely in development and production.
 
 ## Prerequisites
 
-Read [Security](/en/latest/security) before deploying. You need a Quater app
+Read [Security](/en/dev/security) before deploying. You need a Quater app
 with routes declared and production hostnames ready.
 
 ## Development
@@ -222,7 +222,7 @@ headers, and their surface auth hooks.
 
 ## Also See
 
-- [Security](/en/latest/security): host checks, proxies, and production safety.
-- [Actions and CLI](/en/latest/actions): local and remote action setup.
-- [MCP](/en/latest/mcp): hosted MCP configuration.
-- [Reference: Application](/en/latest/reference/application): exact app options.
+- [Security](/en/dev/security): host checks, proxies, and production safety.
+- [Actions and CLI](/en/dev/actions): local and remote action setup.
+- [MCP](/en/dev/mcp): hosted MCP configuration.
+- [Reference: Application](/en/dev/reference/application): exact app options.

@@ -5,7 +5,7 @@ remote CLI actions.
 
 ## Prerequisites
 
-Read the [Quickstart](/en/latest/quickstart) first. You need an app with at
+Read the [Quickstart](/en/dev/quickstart) first. You need an app with at
 least one route declared with `cli=True` and a `cli_auth` hook on `Quater(...)`.
 
 ## Why Actions Exist
@@ -420,7 +420,7 @@ file permissions. Set `QUATER_HOME` to use another directory.
 
 ## Also See
 
-- [MCP](/en/latest/mcp): expose the same route to AI tools.
-- [Security](/en/latest/security): review auth ordering and action discovery.
-- [Deployment](/en/latest/deployment): understand hosted action endpoints.
-- [Testing](/en/latest/testing): test actions through the in-process client.
+- [MCP](/en/dev/mcp): expose the same route to AI tools.
+- [Security](/en/dev/security): review auth ordering and action discovery.
+- [Deployment](/en/dev/deployment): understand hosted action endpoints.
+- [Testing](/en/dev/testing): test actions through the in-process client.

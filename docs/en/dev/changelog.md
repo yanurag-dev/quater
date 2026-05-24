@@ -4,7 +4,7 @@ This page records public release notes for Quater.
 
 ## Prerequisites
 
-Read [Stability](/en/latest/stability) before depending on the pre-release API.
+Read [Stability](/en/dev/stability) before depending on the pre-release API.
 
 ## 0.1.0a2
 
@@ -65,6 +65,6 @@ No public API is deprecated in this alpha.
 
 ## Also See
 
-- [Known Limitations](/en/latest/known-limitations): current gaps.
-- [Stability](/en/latest/stability): public API expectations before 1.0.
-- [Quickstart](/en/latest/quickstart): first working app.
+- [Known Limitations](/en/dev/known-limitations): current gaps.
+- [Stability](/en/dev/stability): public API expectations before 1.0.
+- [Quickstart](/en/dev/quickstart): first working app.

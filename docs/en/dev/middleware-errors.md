@@ -5,7 +5,7 @@ exceptions to responses.
 
 ## Prerequisites
 
-Read [Routes and Handlers](/en/latest/routes-handlers). Middleware examples use
+Read [Routes and Handlers](/en/dev/routes-handlers). Middleware examples use
 the public `Request` and `Response` objects.
 
 ## Middleware Types
@@ -132,7 +132,7 @@ development, enable `debug=True` to see more detail.
 
 ## Also See
 
-- [Public API](/en/latest/api): compact API overview.
-- [Application Reference](/en/latest/reference/application): exact middleware
+- [Public API](/en/dev/api): compact API overview.
+- [Application Reference](/en/dev/reference/application): exact middleware
   and exception handler signatures.
-- [Testing](/en/latest/testing): test middleware and error paths in process.
+- [Testing](/en/dev/testing): test middleware and error paths in process.

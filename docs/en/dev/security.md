@@ -5,8 +5,8 @@ your application owns the policy.
 
 ## Prerequisites
 
-Read [Quickstart](/en/latest/quickstart), [Actions and CLI](/en/latest/actions),
-and [MCP](/en/latest/mcp) if your app exposes tools or actions.
+Read [Quickstart](/en/dev/quickstart), [Actions and CLI](/en/dev/actions),
+and [MCP](/en/dev/mcp) if your app exposes tools or actions.
 
 ## Security Model
 
@@ -287,7 +287,7 @@ for MCP tool calls.
 
 ## Also See
 
-- [Deployment](/en/latest/deployment): production checks and server setup.
-- [MCP](/en/latest/mcp): MCP auth and origin validation.
-- [Actions and CLI](/en/latest/actions): remote action protocol security.
-- [Reference: Auth](/en/latest/reference/auth): exact auth and approval types.
+- [Deployment](/en/dev/deployment): production checks and server setup.
+- [MCP](/en/dev/mcp): MCP auth and origin validation.
+- [Actions and CLI](/en/dev/actions): remote action protocol security.
+- [Reference: Auth](/en/dev/reference/auth): exact auth and approval types.

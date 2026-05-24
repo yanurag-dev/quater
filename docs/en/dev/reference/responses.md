@@ -4,7 +4,7 @@ This page documents Quater response conversion and explicit response classes.
 
 ## Prerequisites
 
-Read [Public API](/en/latest/api#responses). Most handlers can return plain
+Read [Public API](/en/dev/api#responses). Most handlers can return plain
 Python values; use response classes when you need status, headers, redirects, or
 streams.
 
@@ -159,6 +159,6 @@ Expected create response:
 
 ## Also See
 
-- [Public API](/en/latest/api#responses): when to use explicit responses.
-- [Testing](/en/latest/testing#streams): stream response tests.
+- [Public API](/en/dev/api#responses): when to use explicit responses.
+- [Testing](/en/dev/testing#streams): stream response tests.
 - [Request Reference](./request): header item type used by responses.

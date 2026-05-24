@@ -5,7 +5,7 @@ your project today.
 
 ## Prerequisites
 
-Read [Why Quater Exists](/en/latest/why-quater) first. This page is about the
+Read [Why Quater Exists](/en/dev/why-quater) first. This page is about the
 current pre-release framework, not the long-term ambition.
 
 ## Current Limits
@@ -47,9 +47,9 @@ contract.
 
 ## Also See
 
-- [Stability](/en/latest/stability): what is public before the first stable
+- [Stability](/en/dev/stability): what is public before the first stable
   release.
-- [Changelog / Release Notes](/en/latest/changelog): what changed in each
+- [Changelog / Release Notes](/en/dev/changelog): what changed in each
   release.
-- [Deployment](/en/latest/deployment): what Quater does and does not check for
+- [Deployment](/en/dev/deployment): what Quater does and does not check for
   production.

@@ -4,7 +4,7 @@ This page explains `app.state` and request-scoped `Resource` injection.
 
 ## Prerequisites
 
-Read [Quickstart](/en/latest/quickstart) and [Public API](/en/latest/api). You
+Read [Quickstart](/en/dev/quickstart) and [Public API](/en/dev/api). You
 should know async context managers if you plan to inject database sessions.
 
 ## Why This Exists
@@ -153,7 +153,7 @@ That keeps app-owned objects away from untrusted caller input.
 
 ## Groups
 
-Use a [`RouteGroup`](/en/latest/reference/application#symbol-routegroup) when
+Use a [`RouteGroup`](/en/dev/reference/application#symbol-routegroup) when
 several routes in one feature need the same resource:
 
 ```python
@@ -221,8 +221,8 @@ The generated MCP and CLI schemas include `order_id`, not `session`.
 
 ## Also See
 
-- [Public API](/en/latest/api): see `app.state`, lifespan hooks, and `inject`.
-- [Testing](/en/latest/testing): test resource cleanup through `TestClient`.
-- [Reference: Resources](/en/latest/reference/resources): inspect the exact
+- [Public API](/en/dev/api): see `app.state`, lifespan hooks, and `inject`.
+- [Testing](/en/dev/testing): test resource cleanup through `TestClient`.
+- [Reference: Resources](/en/dev/reference/resources): inspect the exact
   `Resource` signature.
-- [Deployment](/en/latest/deployment): understand how workers affect app state.
+- [Deployment](/en/dev/deployment): understand how workers affect app state.

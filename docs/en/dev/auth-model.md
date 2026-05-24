@@ -5,8 +5,8 @@ HTTP, MCP, and CLI.
 
 ## Prerequisites
 
-Read [HTTP, MCP, and CLI Surfaces](/en/latest/surfaces). If you expose tools or
-actions, read [Security](/en/latest/security) before deployment.
+Read [HTTP, MCP, and CLI Surfaces](/en/dev/surfaces). If you expose tools or
+actions, read [Security](/en/dev/security) before deployment.
 
 ## The Rule
 
@@ -142,6 +142,6 @@ MCP worked during `initialize` but failed later
 
 ## Also See
 
-- [Security](/en/latest/security): production security details.
-- [MCP Tools](/en/latest/mcp): MCP auth behavior.
-- [Actions and CLI](/en/latest/actions): CLI auth and approval flows.
+- [Security](/en/dev/security): production security details.
+- [MCP Tools](/en/dev/mcp): MCP auth behavior.
+- [Actions and CLI](/en/dev/actions): CLI auth and approval flows.

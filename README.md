@@ -187,10 +187,10 @@ version you test with.
 
 ## Documentation
 
-- [Quickstart](docs/en/latest/quickstart.md): build the first app.
-- [Why Quater Exists](docs/en/latest/why-quater.md): understand the problem
+- [Quickstart](docs/en/dev/quickstart.md): build the first app.
+- [Why Quater Exists](docs/en/dev/why-quater.md): understand the problem
   Quater is built around.
-- [Manual](docs/en/latest/index.md): read the full guide and reference.
+- [Manual](docs/en/dev/index.md): read the full guide and reference.
 
 ## Agent Skills
 
