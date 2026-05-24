@@ -5,7 +5,8 @@ import pytest
 from quater import Quater
 from quater.core import RouteDefinition
 from quater.exceptions import ConfigurationError
-from quater.tools.registry import build_tool_registry
+from quater.tools import registry as tool_registry_module
+from quater.tools.registry import ToolRegistry, build_tool_registry
 from quater.typing import AuthContext, AuthRequest
 
 
@@ -110,6 +111,28 @@ def test_app_builds_tool_registry_during_route_compile() -> None:
     app.compile_routes()
 
     assert app._compiled_tool_registry().get("get_item") is not None
+
+
+def test_app_compiles_dirty_tool_registry_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = Quater(mcp_auth=allow_mcp_auth)
+    registry_builds = 0
+    original_build_tool_registry = tool_registry_module.build_tool_registry
+
+    def build_once(routes: tuple[RouteDefinition, ...]) -> ToolRegistry:
+        nonlocal registry_builds
+        registry_builds += 1
+        return original_build_tool_registry(routes)
+
+    monkeypatch.setattr(tool_registry_module, "build_tool_registry", build_once)
+
+    @app.get("/items/{id:int}", tool=True, description="Fetch one item.")
+    async def get_item(id: int) -> dict[str, int]:
+        return {"id": id}
+
+    assert app._compiled_tool_registry().get("get_item") is not None
+    assert app._compiled_tool_registry().get("get_item") is not None
+    assert app._compiled_tool_registry().get("get_item") is not None
+    assert registry_builds == 1
 
 
 def test_tool_routes_require_mcp_auth() -> None:

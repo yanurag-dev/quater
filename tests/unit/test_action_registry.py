@@ -3,7 +3,9 @@ from __future__ import annotations
 import pytest
 
 from quater import Quater
-from quater.actions.registry import build_action_registry
+from quater.actions import registry as action_registry_module
+from quater.actions.registry import ActionRegistry, build_action_registry
+from quater.core import RouteDefinition
 from quater.exceptions import ConfigurationError
 from quater.typing import ApprovalRequest, AuthContext, AuthRequest
 
@@ -139,3 +141,44 @@ def test_externally_callable_routes_need_a_stable_name() -> None:
             cli=True,
             description="Run callable handler.",
         )
+
+
+def test_app_compiles_dirty_action_registry_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = Quater(cli_auth=allow_auth)
+    registry_builds = 0
+    original_build_action_registry = action_registry_module.build_action_registry
+
+    def build_once(routes: tuple[RouteDefinition, ...]) -> ActionRegistry:
+        nonlocal registry_builds
+        registry_builds += 1
+        return original_build_action_registry(routes)
+
+    monkeypatch.setattr(action_registry_module, "build_action_registry", build_once)
+
+    @app.get("/orders/{id:int}", cli=True, description="Fetch one order.")
+    async def get_order(id: int) -> dict[str, int]:
+        return {"id": id}
+
+    assert app._compiled_action_registry().get("get_order") is not None
+    assert app._compiled_action_registry().get("get_order") is not None
+    assert app._compiled_action_registry().get("get_order") is not None
+    assert registry_builds == 1
+
+
+def test_action_registry_recompile_keeps_http_router_current() -> None:
+    app = Quater(cli_auth=allow_auth)
+
+    @app.get("/health")
+    async def health() -> dict[str, bool]:
+        return {"ok": True}
+
+    app.compile_routes()
+
+    @app.get("/orders/{id:int}", cli=True, description="Fetch one order.")
+    async def get_order(id: int) -> dict[str, int]:
+        return {"id": id}
+
+    assert app._compiled_action_registry().get("get_order") is not None
+    assert app._compiled_router().match("GET", "/orders/7").route is not None

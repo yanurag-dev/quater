@@ -31,6 +31,8 @@ production-facing config, and adapter response safety.
 - Changed request body reads to cache read and size-limit failures instead of
   invoking the body reader again.
 - Changed shutdown hook failures to mark lifespan as failed instead of started.
+- Changed tool and action registry access to compile dirty routes once and keep
+  the HTTP router current.
 
 ## 0.1.0a1
 

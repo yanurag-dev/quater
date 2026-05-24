@@ -788,6 +788,8 @@ class Quater:
         return self._router
 
     def _compiled_tool_registry(self) -> ToolRegistry:
+        if self._routes_dirty:
+            self.compile_routes()
         if self._tool_registry is None or self._routes_dirty:
             from quater.tools.registry import build_tool_registry
 
@@ -797,6 +799,8 @@ class Quater:
         return self._tool_registry
 
     def _compiled_action_registry(self) -> ActionRegistry:
+        if self._routes_dirty:
+            self.compile_routes()
         if self._action_registry is None or self._routes_dirty:
             from quater.actions.registry import build_action_registry
 
