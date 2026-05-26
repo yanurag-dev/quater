@@ -10,25 +10,21 @@ hero:
       link: /en/dev/quickstart
 
 features:
-  - title: Built for the next caller
-    details: Frontends still matter, but AI agents should not have to click through screens to do backend work safely.
-  - title: One trusted operation
-    details: Keep the real application logic in the route, then opt selected operations into MCP tools or CLI actions when they should be callable outside the UI.
-  - title: Direct does not mean unsafe
-    details: MCP and CLI have their own auth boundaries before route auth runs, with descriptions, schemas, audits, and approvals for sensitive actions.
-  - title: Useful to humans too
-    details: You still get normal HTTP APIs, OpenAPI, Swagger UI, typed binding, route groups, middleware, and an in-process test client.
-  - title: Small request path
-    details: "Quater uses Granian on RSGI, msgspec for JSON, and a native router to keep framework overhead low."
-  - title: Docs by default
-    details: OpenAPI, Swagger UI, and MCP tool docs are generated from the route metadata you already wrote.
+  - title: One route, three surfaces
+    details: Write the handler once, then opt it into MCP tools or CLI actions when agents should use it directly.
+  - title: Know who called
+    details: Every request carries its source, so your handler can tell whether it came from HTTP, MCP, local CLI, or remote CLI.
+  - title: Agent access has gates
+    details: MCP auth, CLI auth, route auth, audits, and approvals stay separate, so direct access still follows your rules.
+  - title: Fast path by default
+    details: Granian/RSGI, msgspec, and the native router keep the framework layer small.
 ---
 
 ## Start Here
 
 Quater starts from a simple belief: AI agents need a better interface to
 software than screens meant for humans. The answer is not to bypass your
-backend. The answer is to expose the right backend operations directly, with
+backend. The answer is to expose the right backend views directly, with
 clear inputs and real safety boundaries.
 
 This site documents Quater's current pre-release API. If you are evaluating the

@@ -13,7 +13,7 @@ protocol model.
 ## The Short Version
 
 Quater is for backends that need to serve people and services through normal
-APIs, while also exposing selected operations directly to AI agents and
+APIs, while also exposing selected views directly to AI agents and
 MCP clients.
 
 You declare a route, then opt it into the surfaces you want:

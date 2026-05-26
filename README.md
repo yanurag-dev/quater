@@ -13,7 +13,7 @@ operations, with clear inputs, clear descriptions, real auth, audit trails, and
 approval gates where the action is sensitive.
 
 Quater is a Python backend framework built for this shift. You build a normal
-backend for people and services, and you can expose selected operations directly
+backend for people and services, and you can expose selected views directly
 to MCP Clients through MCP or to AI agents through the CLI. The same operation can
 serve the app, power an agent, and support production workflows without becoming
 three different pieces of code.
