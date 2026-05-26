@@ -190,7 +190,16 @@ For very small endpoints without database access, FastAPI can be faster because 
 
 In the latest run, Quater used Granian/RSGI, while FastAPI used Uvicorn with uvloop and httptools. Full setup, commands, and CSV files are available in [benchmarks](benchmarks/).
 
-<p><img src="benchmarks/assets/no-db-throughput.svg" alt="No database throughput" width="24%"> <img src="benchmarks/assets/no-db-p95.svg" alt="No database p95 latency" width="24%"> <img src="benchmarks/assets/postgres-throughput.svg" alt="Postgres throughput" width="24%"> <img src="benchmarks/assets/postgres-p95.svg" alt="Postgres p95 latency" width="24%"></p>
+<table>
+  <tr>
+    <td><img src="benchmarks/assets/no-db-throughput.svg" alt="No database throughput"></td>
+    <td><img src="benchmarks/assets/no-db-p95.svg" alt="No database p95 latency"></td>
+  </tr>
+  <tr>
+    <td><img src="benchmarks/assets/postgres-throughput.svg" alt="Postgres throughput"></td>
+    <td><img src="benchmarks/assets/postgres-p95.svg" alt="Postgres p95 latency"></td>
+  </tr>
+</table>
 
 ## Current Status
 
