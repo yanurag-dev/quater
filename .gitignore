@@ -29,3 +29,4 @@ notes/
 sample_projects
 target/
 src/quater/*.so
+.bench-venv

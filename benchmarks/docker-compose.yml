@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: quater_bench
+      POSTGRES_USER: quater
+      POSTGRES_PASSWORD: quater
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quater -d quater_bench"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - quater-benchmark-postgres:/var/lib/postgresql/data
+
+volumes:
+  quater-benchmark-postgres:

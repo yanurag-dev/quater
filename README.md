@@ -182,11 +182,20 @@ capability, not as three products you have to maintain.
 - **For performance:** the request path stays deliberately small with
   Granian/RSGI, msgspec JSON, and a native route matcher.
 
+## Benchmarks
+
+To measure performance, we ran [benchmarks](benchmarks/) on an Apple M2 with an 8-core CPU, 16 GiB RAM, macOS 26.3, Python 3.11.12, and one worker per app. Quater performed slightly better than FastAPI when real database work was involved.
+
+For very small endpoints without database access, FastAPI can be faster because the benchmark mostly measures framework overhead. Quater still runs built-in checks such as host validation, request IDs, body limits, and security headers on every request.
+
+In the latest run, Quater used Granian/RSGI, while FastAPI used Uvicorn with uvloop and httptools. Full setup, commands, and CSV files are available in [benchmarks](benchmarks/).
+
+<p><img src="benchmarks/assets/no-db-throughput.svg" alt="No database throughput" width="24%"> <img src="benchmarks/assets/no-db-p95.svg" alt="No database p95 latency" width="24%"> <img src="benchmarks/assets/postgres-throughput.svg" alt="Postgres throughput" width="24%"> <img src="benchmarks/assets/postgres-p95.svg" alt="Postgres p95 latency" width="24%"></p>
+
 ## Current Status
 
-Quater is pre-release. The documented top-level imports are the public surface,
-but names and defaults can still change before the first stable release. Pin the
-version you test with.
+Quater is in pre-release stage. The documented top-level imports are the public surface,
+but names and defaults can still change before the first stable release.
 
 ## Documentation
 
@@ -200,47 +209,22 @@ version you test with.
 Quater ships two agent skills:
 
 - `quater-apps`: for operating applications built with Quater through MCP, CLI actions, and
-  HTTP.
+  HTTP. The applications build on quater can have their own skills for operating their applications.
 - `quater-framework`: for building and debugging applications with Quater.
 
-Install the app-operator skill for Codex:
+Install the app-operator skill:
 
 ```bash
 npx -y skills add \
-  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-apps \
-  -a codex
+  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-apps
 ```
 
-Install the framework-development skill for Codex:
+Install the framework-development skill:
 
 ```bash
 npx -y skills add \
-  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-framework \
-  -a codex
+  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-framework
 ```
-
-Use a different `-a` value for a different agent:
-
-```bash
-npx -y skills add \
-  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-apps \
-  -a claude-code
-```
-
-You can repeat `-a` to install into more than one agent:
-
-```bash
-npx -y skills add \
-  https://github.com/DevilsAutumn/quater/tree/main/agent-skills/quater-apps \
-  -a codex \
-  -a claude-code \
-  -a cursor
-```
-
-Common agent identifiers include `codex`, `claude-code`, `cursor`,
-`github-copilot`, `gemini-cli`, `windsurf`, `opencode`, `cline`, `roo`, `amp`,
-and `antigravity`. If you omit `-a`, the installer will try to detect the
-available agents on your machine.
 
 ## Working On Quater
 
