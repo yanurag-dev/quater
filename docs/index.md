@@ -2,8 +2,8 @@
 layout: home
 
 hero:
-  text: Backends for people, MCP clients, and AI agents.
-  tagline: A Python backend framework for the agent era. Build applications for humans, and expose safe backend operations for AI agents via MCP and CLI.
+  text: Build applications for people, MCP clients, and AI agents.
+  tagline: A Python backend framework for the agent era.
   actions:
     - theme: brand
       text: Start Building
@@ -38,7 +38,7 @@ framework, start with the [Quickstart](/en/dev/quickstart), then read the
 Prerequisites: Python 3.11 or newer, async Python basics, and enough HTTP
 knowledge to read request and response examples.
 
-## One Operation, Three Ways To Call It
+## One View, Three Ways To Call It
 
 ```python
 from quater import AuthContext, AuthRequest, Quater, Request
@@ -86,28 +86,28 @@ Expected server output:
 [INFO] Listening at: http://127.0.0.1:8000
 ```
 
-Call it as HTTP:
+1. Call it as HTTP:
 
 ```bash
 curl -H "Authorization: Bearer demo-token" \
   http://127.0.0.1:8000/orders/ord_1001
 ```
 
-Call it from the local CLI:
-
-```bash
-export QUATER_APP=main:app
-export QUATER_TOKEN=demo-token
-quater call get_order --order-id ord_1001
-```
-
-Call it as an MCP tool:
+2. Call it as an MCP tool:
 
 ```bash
 curl http://127.0.0.1:8000/mcp \
   -H "Authorization: Bearer demo-token" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_order","arguments":{"order_id":"ord_1001"}}}'
+```
+
+3. Call it from the CLI:
+
+```bash
+export QUATER_APP=main:app
+export QUATER_TOKEN=demo-token
+quater call get_order --order-id ord_1001
 ```
 
 All three calls reach the same handler. The `source` value tells you which
