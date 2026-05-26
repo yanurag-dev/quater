@@ -26,35 +26,6 @@ behind a large dependency graph. It focuses on the parts this new backend model
 needs: typed handlers, explicit auth boundaries, AI-readable metadata,
 operator-friendly actions, generated docs, and a small request path.
 
-```mermaid
-flowchart TB
-    caller["Caller\nperson, service, or AI agent"]
-    http["HTTP request\nGET /orders/ord_1001"]
-    mcp["MCP tool call\ntools/call get_order"]
-    remote_cli["Remote CLI action\nquater call store get_order"]
-    adapter["Server adapter\nRSGI / ASGI / WSGI"]
-    checks["Framework checks\nhost, body limit, CORS, request id"]
-    router["Route metadata\nmethod, path, auth, resources"]
-    mcp_surface_auth["MCP auth\nmcp_auth"]
-    cli_surface_auth["CLI auth\ncli_auth"]
-    route_auth["Route auth\nauth="]
-    handler["Your handler\nget_order(...)"]
-    response["Serialized response\nJSON, text, bytes, stream"]
-
-    caller --> http
-    caller --> mcp
-    caller --> remote_cli
-    http --> adapter
-    mcp --> adapter
-    remote_cli --> adapter
-    adapter --> checks
-    checks --> router
-    router -->|HTTP| route_auth
-    router -->|MCP| mcp_surface_auth --> route_auth
-    router -->|remote CLI| cli_surface_auth --> route_auth
-    route_auth --> handler
-    handler --> response
-```
 
 ## A Small App
 
@@ -117,7 +88,7 @@ Expected server output:
 [INFO] Listening at: http://127.0.0.1:8000
 ```
 
-Call HTTP:
+1. Call HTTP:
 
 ```bash
 curl -H "Authorization: Bearer admin-token" \
@@ -135,7 +106,32 @@ curl -H "Authorization: Bearer admin-token" \
 }
 ```
 
-Call the same handler from the local CLI without a server round trip:
+2. Call the same handler as an MCP tool:
+
+```bash
+curl http://127.0.0.1:8000/mcp \
+  -H "Authorization: Bearer admin-token" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_order","arguments":{"order_id":"ord_1001"}}}'
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"id\":\"ord_1001\",\"status\":\"paid\",\"total\":42.5,\"subject\":\"admin\",\"source\":\"mcp\",\"entrypoint\":\"server\"}"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+3. Call the same handler from the local CLI without a server round trip:
 
 ```bash
 export QUATER_APP=main:app
@@ -155,12 +151,44 @@ quater call get_order --order-id ord_1001
 }
 ```
 
-For a hosted app, connect once and call the named remote:
+4. For a hosted app, connect once and call the named remote, just like git:
 
 ```bash
 quater connect store https://api.example.com --token admin-token
 quater actions describe store get_order
 quater call store get_order --order-id ord_1001
+```
+
+## Data flow diagram
+
+```mermaid
+flowchart TB
+    caller["Caller\nperson, service, or AI agent"]
+    http["HTTP request\nGET /orders/ord_1001"]
+    mcp["MCP tool call\ntools/call get_order"]
+    remote_cli["Remote CLI action\nquater call store get_order"]
+    adapter["Server adapter\nRSGI / ASGI / WSGI"]
+    checks["Framework checks\nhost, body limit, CORS, request id"]
+    router["Route metadata\nmethod, path, auth, resources"]
+    mcp_surface_auth["MCP auth\nmcp_auth"]
+    cli_surface_auth["CLI auth\ncli_auth"]
+    route_auth["Route auth\nauth="]
+    handler["Your handler\nget_order(...)"]
+    response["Serialized response\nJSON, text, bytes, stream"]
+
+    caller --> http
+    caller --> mcp
+    caller --> remote_cli
+    http --> adapter
+    mcp --> adapter
+    remote_cli --> adapter
+    adapter --> checks
+    checks --> router
+    router -->|HTTP| route_auth
+    router -->|MCP| mcp_surface_auth --> route_auth
+    router -->|remote CLI| cli_surface_auth --> route_auth
+    route_auth --> handler
+    handler --> response
 ```
 
 ## Why This Shape
