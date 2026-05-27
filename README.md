@@ -9,7 +9,7 @@
   </a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue">
   <a href="https://github.com/DevilsAutumn/quater/blob/main/LICENSE">
-    <img alt="License" src="https://img.shields.io/github/license/DevilsAutumn/quater">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
   </a>
   <a href="https://quater.devilsautumn.com/en/dev/">
     <img alt="Docs" src="https://img.shields.io/badge/docs-quater.devilsautumn.com-blue">
