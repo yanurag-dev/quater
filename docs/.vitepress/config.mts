@@ -257,11 +257,7 @@ export default defineConfig({
   head: [
     ["meta", { name: "theme-color", content: "#ED4B2F" }],
     ["link", { rel: "icon", href: "/logo-no-bg.svg", type: "image/svg+xml" }],
-    [
-      "script",
-      { type: "application/ld+json" },
-      JSON.stringify(structuredData),
-    ],
+    ["script", { type: "application/ld+json" }, JSON.stringify(structuredData)],
   ],
 
   themeConfig: {
@@ -287,7 +283,7 @@ export default defineConfig({
 
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2026 Bhuvnesh Sharma",
+      copyright: "Copyright © 2026 DevilsAutumn",
     },
   },
 });
