@@ -1,3 +1,8 @@
+---
+title: Testing Quater applications
+description: Test Quater handlers, auth, resources, cookies, streams, lifespan hooks, and MCP tools without starting a server.
+---
+
 # Testing Quater Apps
 
 This page shows how to test Quater handlers, auth, resources, streams, cookies,

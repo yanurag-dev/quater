@@ -1,3 +1,8 @@
+---
+title: Quater auth model
+description: Understand how mcp_auth, cli_auth, route auth hooks, request auth context, and approval gates work together.
+---
+
 # Auth Model
 
 This page explains how Quater separates surface auth from route auth across

@@ -1,3 +1,8 @@
+---
+title: Quater security model
+description: Understand Quater's auth layers, request safety checks, CORS behavior, host validation, MCP origins, cookies, and production defaults.
+---
+
 # Security
 
 This page documents Quater's security boundaries, defaults, and the places where

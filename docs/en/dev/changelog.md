@@ -1,3 +1,8 @@
+---
+title: Quater changelog
+description: Read Quater release notes, including added features, fixes, behavior changes, and migration notes.
+---
+
 # Changelog / Release Notes
 
 This page records public release notes for Quater.

@@ -1,5 +1,7 @@
 ---
 layout: home
+title: Quater - Python backend framework for HTTP, MCP, and CLI
+description: Build Python backend APIs that humans can use through HTTP and AI agents can operate through MCP tools or CLI actions.
 
 hero:
   text: Build applications for people, MCP clients, and AI agents.

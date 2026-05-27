@@ -1,3 +1,8 @@
+---
+title: Resources and injection in Quater
+description: Use Quater app.state and Resource providers for long-lived application objects and per-request dependencies.
+---
+
 # Resources And Injection
 
 This page explains `app.state` and request-scoped `Resource` injection.

@@ -1,3 +1,8 @@
+---
+title: Quater Quickstart
+description: Install Quater, build your first typed backend route, and call it through HTTP, MCP, and the CLI.
+---
+
 # Quickstart
 
 This page gets you from a clean Python project to a running Quater app. You will

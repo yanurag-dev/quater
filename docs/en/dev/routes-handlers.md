@@ -1,3 +1,8 @@
+---
+title: Routes and handlers in Quater
+description: Define typed Quater routes, bind request data, expose selected handlers to MCP or CLI, and keep route metadata consistent.
+---
+
 # Routes And Handlers
 
 This page explains how Quater routes map incoming calls to your application

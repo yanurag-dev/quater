@@ -1,3 +1,8 @@
+---
+title: Quater known limitations
+description: Understand what Quater does not provide yet, including current limits around websockets, background tasks, and ecosystem maturity.
+---
+
 # Known Limitations
 
 This page lists the current limits of Quater so you can decide whether it fits

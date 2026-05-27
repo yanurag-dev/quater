@@ -1,3 +1,8 @@
+---
+title: MCP tools in Quater
+description: Expose selected Quater routes as MCP tools with transport auth, typed input schemas, audit hooks, and route-level protection.
+---
+
 # MCP Tools
 
 This page explains how Quater exposes selected backend operations as MCP tools

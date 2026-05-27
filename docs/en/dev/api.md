@@ -1,3 +1,8 @@
+---
+title: Quater public API
+description: Review Quater's public imports, app object, route groups, request objects, responses, auth types, resources, and test clients.
+---
+
 # Public API
 
 This page explains the public Quater API in human terms before you use the

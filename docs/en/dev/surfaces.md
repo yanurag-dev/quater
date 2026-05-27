@@ -1,3 +1,8 @@
+---
+title: HTTP, MCP, and CLI surfaces in Quater
+description: Understand how Quater routes can be called through HTTP, MCP tools, local CLI, and remote CLI without duplicating handlers.
+---
+
 # HTTP, MCP, And CLI Surfaces
 
 This page explains how one Quater route can be reached through HTTP, MCP, and

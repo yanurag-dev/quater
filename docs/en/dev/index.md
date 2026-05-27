@@ -1,3 +1,8 @@
+---
+title: Quater Manual
+description: Learn the Quater mental model, request lifecycle, and how HTTP, MCP, and CLI calls reach the same Python handler.
+---
+
 # Quater Manual
 
 This manual explains how Quater helps you build Python backends that people can

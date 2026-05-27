@@ -1,3 +1,8 @@
+---
+title: Quater API stability
+description: Understand Quater's pre-release API stability policy, public import boundary, internal modules, and compatibility expectations.
+---
+
 # Stability
 
 This page explains which Quater APIs you can rely on during the pre-release

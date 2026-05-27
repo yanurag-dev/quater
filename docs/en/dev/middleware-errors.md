@@ -1,3 +1,8 @@
+---
+title: Middleware and errors in Quater
+description: Use before, after, and around middleware hooks, exception handlers, and safe error responses in Quater applications.
+---
+
 # Middleware And Errors
 
 This page explains how Quater lets you run code around handlers and map

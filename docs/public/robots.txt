@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://quater.devilsautumn.com/sitemap.xml

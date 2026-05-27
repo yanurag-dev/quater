@@ -1,3 +1,8 @@
+---
+title: Why Quater exists
+description: Learn why Quater exposes backend routes through HTTP, MCP tools, and CLI actions for humans, services, and AI agents.
+---
+
 # Why Quater Exists
 
 This page explains the problem Quater is built around before it explains the

@@ -1,3 +1,8 @@
+---
+title: CLI actions in Quater
+description: Expose selected Quater routes as local or remote CLI actions with discovery, dry-run, approval, and JSON output.
+---
+
 # Actions And CLI
 
 This page explains how Quater exposes selected backend operations as local and
