@@ -75,24 +75,24 @@ CLI imports your app and enters after the network layer.
 
 ```mermaid
 flowchart TB
-    in["request in\nframework"]
-    adapter["server adapter\nframework: RSGI / ASGI / WSGI"]
-    checks["request checks\nframework: host, body size, CORS, request id"]
-    router["router\nframework: native route matcher"]
-    before["before middleware\nyour code"]
-    surface["surface check\nframework: HTTP, MCP, or CLI"]
-    surface_auth["surface auth\nyour code: mcp_auth / cli_auth"]
-    route_auth["route auth\nyour code: auth="]
-    bind["bind parameters\nframework: path, query, body, resources"]
-    handler["handler\nyour code"]
-    after["after middleware\nyour code"]
-    serialize["serialize\nframework: response or msgspec JSON"]
-    out["response out\nframework"]
+    request_in["Request in<br/>framework"]
+    adapter["Server adapter<br/>RSGI, ASGI, or WSGI"]
+    checks["Request checks<br/>host, body size, CORS, request id"]
+    router["Router<br/>native route matcher"]
+    before["Before middleware<br/>your code"]
+    surface["Surface check<br/>HTTP, MCP, or CLI"]
+    surface_auth["Surface auth<br/>mcp_auth or cli_auth"]
+    route_auth["Route auth<br/>auth hook"]
+    bind["Bind parameters<br/>path, query, body, resources"]
+    handler["Handler<br/>your code"]
+    after["After middleware<br/>your code"]
+    serialize["Serialize<br/>response or msgspec JSON"]
+    response_out["Response out<br/>framework"]
 
-    in --> adapter --> checks --> router --> before --> surface
+    request_in --> adapter --> checks --> router --> before --> surface
     surface -->|HTTP| route_auth
     surface -->|MCP or CLI| surface_auth --> route_auth
-    route_auth --> bind --> handler --> after --> serialize --> out
+    route_auth --> bind --> handler --> after --> serialize --> response_out
 ```
 
 Route groups do not add another router at request time. Quater flattens group
@@ -159,9 +159,9 @@ The three surfaces converge on the same handler, but auth does not collapse:
 
 ```mermaid
 flowchart LR
-    api["HTTP caller"] --> api_auth["route auth="] --> handler["handler"]
-    mcp["MCP caller"] --> mcp_auth["mcp_auth"] --> mcp_route["route auth="] --> handler
-    cli["CLI caller"] --> cli_auth["cli_auth"] --> cli_route["route auth="] --> handler
+    api["HTTP caller"] --> api_auth["Route auth"] --> handler["Handler"]
+    mcp["MCP caller"] --> mcp_auth["mcp_auth"] --> mcp_route["Route auth"] --> handler
+    cli["CLI caller"] --> cli_auth["cli_auth"] --> cli_route["Route auth"] --> handler
 ```
 
 ## Reading Path
