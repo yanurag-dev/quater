@@ -40,8 +40,9 @@ quater connect <remote> <url> --token <token>
 quater login <remote> --token <token>
 ```
 
-Do not edit `~/.quater/remotes.json` by hand. The CLI stores remote config with
-restricted file permissions and refreshes cached discovery data after login.
+Do not edit `~/.quater/remotes.json` by hand. The CLI stores only remote
+connection details with restricted file permissions and fetches discovery data
+when actions are inspected.
 
 ## HTTP
 

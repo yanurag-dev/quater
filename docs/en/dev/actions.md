@@ -389,8 +389,10 @@ quater call store get_order --order-id ord_1001
 Remote URLs must use HTTPS unless they target localhost. Quater rejects
 credentials, query strings, fragments, whitespace, and malformed URLs.
 
-Quater stores remote config at `~/.quater/remotes.json` by default with `0600`
-file permissions. Set `QUATER_HOME` to use another directory.
+Quater stores only remote connection details at `~/.quater/remotes.json` by
+default with `0600` file permissions. Action discovery is fetched from the
+remote when you run `quater actions ...`. Set `QUATER_HOME` to use another
+directory.
 
 ## What Can Go Wrong
 

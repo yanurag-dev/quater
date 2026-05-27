@@ -27,13 +27,14 @@ def test_remote_config_is_written_with_strict_permissions(
             name="billing",
             url="https://api.example.com",
             token="secret",
-            manifest={"protocol": "quater-actions.v1", "actions": []},
         )
     )
 
     config_path = quater_home / "remotes.json"
     assert file_mode(quater_home) == 0o700
     assert file_mode(config_path) == 0o600
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert "manifest" not in payload["remotes"]["billing"]
 
 
 def test_remote_config_load_rejects_invalid_shape(
@@ -150,7 +151,7 @@ def test_remote_url_rejects_whitespace() -> None:
         validate_remote_url("https://api.example.com/actions list")
 
 
-def test_loaded_remote_config_preserves_manifest_without_printing_token(
+def test_loaded_remote_config_ignores_legacy_manifest(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -179,4 +180,10 @@ def test_loaded_remote_config_preserves_manifest_without_printing_token(
 
     assert remote.url == "https://api.example.com"
     assert remote.token == "secret"
-    assert remote.manifest == {"protocol": "quater-actions.v1", "actions": []}
+    assert not hasattr(remote, "manifest")
+
+    save_remote(remote)
+    payload = json.loads(
+        quater_home.joinpath("remotes.json").read_text(encoding="utf-8")
+    )
+    assert "manifest" not in payload["remotes"]["billing"]

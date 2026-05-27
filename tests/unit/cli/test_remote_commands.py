@@ -58,6 +58,39 @@ def test_cli_connect_stores_remote_with_strict_permissions(
     assert file_mode(config_path) == 0o600
     payload = json.loads(config_path.read_text(encoding="utf-8"))
     assert payload["remotes"]["billing"]["url"] == "https://api.example.com"
+    assert payload["remotes"]["billing"]["token"] == "secret"
+    assert "manifest" not in payload["remotes"]["billing"]
+
+
+def test_cli_login_validates_token_without_storing_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    quater_home = tmp_path / ".quater"
+    seen_tokens: list[str | None] = []
+
+    def fake_fetch_manifest(url: str, *, token: str | None) -> dict[str, object]:
+        seen_tokens.append(token)
+        return {"protocol": "quater-actions.v1", "actions": []}
+
+    monkeypatch.setenv("QUATER_HOME", str(quater_home))
+    monkeypatch.setattr("quater.cli.main.fetch_manifest", fake_fetch_manifest)
+
+    assert main(["connect", "billing", "https://api.example.com"]) == 0
+    capsys.readouterr()
+
+    code = main(["login", "billing", "--token", "secret"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "secret" not in captured.out
+    assert seen_tokens == ["secret"]
+    payload = json.loads((quater_home / "remotes.json").read_text(encoding="utf-8"))
+    assert payload["remotes"]["billing"] == {
+        "token": "secret",
+        "url": "https://api.example.com",
+    }
 
 
 def test_cli_remote_actions_list_uses_stored_token(
@@ -107,6 +140,10 @@ def test_cli_remote_actions_list_uses_stored_token(
             }
         ]
     }
+    config_payload = json.loads(
+        (quater_home / "remotes.json").read_text(encoding="utf-8")
+    )
+    assert "manifest" not in config_payload["remotes"]["billing"]
 
 
 def test_cli_remote_actions_search_keeps_results_compact(

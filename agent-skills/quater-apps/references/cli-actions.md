@@ -22,7 +22,7 @@ Full docs: https://quater.devilsautumn.com/en/latest/actions
 - Use `--json` only when you need machine-readable output. Summarize results to
   the user in normal language.
 - Do not expose command transcripts, request metadata, raw manifests, internal
-  action RPC paths, or cached remote config in normal replies. The user asked
+  action RPC paths, or saved remote config in normal replies. The user asked
   you to operate the app, not narrate the protocol.
 
 Global flags such as `--json` and `--token` go before the subcommand:

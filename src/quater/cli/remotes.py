@@ -7,7 +7,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlparse
 
 from quater.cli.errors import CLIUsageError
@@ -21,7 +21,6 @@ class RemoteConfig:
     name: str
     url: str
     token: str | None = None
-    manifest: dict[str, object] | None = None
 
 
 def quater_home() -> Path:
@@ -55,12 +54,9 @@ def load_remotes() -> dict[str, RemoteConfig]:
             raise CLIUsageError("Quater remote config is invalid")
         url = value.get("url")
         token = value.get("token")
-        manifest = value.get("manifest")
         if not isinstance(url, str):
             raise CLIUsageError("Quater remote config is invalid")
         if token is not None and (not isinstance(token, str) or not token.strip()):
-            raise CLIUsageError("Quater remote config is invalid")
-        if manifest is not None and not isinstance(manifest, dict):
             raise CLIUsageError("Quater remote config is invalid")
         validated_name = validate_remote_name(name)
         validated_url = validate_remote_url(url)
@@ -68,7 +64,6 @@ def load_remotes() -> dict[str, RemoteConfig]:
             name=validated_name,
             url=validated_url,
             token=token,
-            manifest=cast(dict[str, object] | None, manifest),
         )
     return remotes
 
@@ -89,7 +84,6 @@ def _write_remotes(remotes: dict[str, RemoteConfig]) -> None:
             name: {
                 "url": remote.url,
                 "token": remote.token,
-                "manifest": remote.manifest,
             }
             for name, remote in sorted(remotes.items())
         }

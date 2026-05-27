@@ -163,8 +163,9 @@ def _connect_remote(namespace: argparse.Namespace) -> int:
     name = validate_remote_name(namespace.name)
     url = validate_remote_url(namespace.url)
     token = _non_empty_token(namespace.token)
-    manifest = fetch_manifest(url, token=token) if token is not None else None
-    save_remote(RemoteConfig(name=name, url=url, token=token, manifest=manifest))
+    if token is not None:
+        fetch_manifest(url, token=token)
+    save_remote(RemoteConfig(name=name, url=url, token=token))
     if namespace.as_json:
         print_json({"ok": True, "remote": {"name": name, "url": url}})
     else:
@@ -177,15 +178,8 @@ def _login_remote(namespace: argparse.Namespace) -> int:
     token = _non_empty_token(namespace.token)
     if token is None:
         raise CLIUsageError("--token is required")
-    manifest = fetch_manifest(remote.url, token=token)
-    save_remote(
-        RemoteConfig(
-            name=remote.name,
-            url=remote.url,
-            token=token,
-            manifest=manifest,
-        )
-    )
+    fetch_manifest(remote.url, token=token)
+    save_remote(RemoteConfig(name=remote.name, url=remote.url, token=token))
     if namespace.as_json:
         print_json({"ok": True, "remote": {"name": remote.name, "url": remote.url}})
     else:
@@ -279,16 +273,7 @@ def _remote_manifest(
     token = (
         _non_empty_token(token_override) if token_override is not None else remote.token
     )
-    manifest = fetch_manifest(remote.url, token=token)
-    save_remote(
-        RemoteConfig(
-            name=remote.name,
-            url=remote.url,
-            token=remote.token,
-            manifest=manifest,
-        )
-    )
-    return manifest
+    return fetch_manifest(remote.url, token=token)
 
 
 def _manifest_actions(manifest: dict[str, object]) -> list[dict[str, object]]:
