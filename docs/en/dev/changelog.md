@@ -59,9 +59,10 @@ Read [Stability](/en/dev/stability) before depending on the pre-release API.
   scope, so a session auth opens to verify the caller is the same session the
   handler injects. `AuthContext` gained a typed `payload` slot to
   carry the loaded object (for example the `User`) so a handler reads it back
-  through a resource with no second query. Routes are protected by default and
-  opt out with `public=True` (every exposed surface) or `public=["mcp", ...]`
-  (named surfaces). Remote CLI now reads the action name before auth, matching
+  through a resource with no second query. A surface covered by `AuthConfig`
+  protects its exposed routes by default; routes opt out with `public=True`
+  (every exposed surface) or `public=["mcp", ...]` (named surfaces). Remote CLI
+  now reads the action name before auth, matching
   MCP. ([#54](https://github.com/DevilsAutumn/quater/issues/54))
 - Changed global middleware and exception handlers to wrap the real route
   handler on HTTP, MCP tools, and CLI actions. MCP `tools/call` and CLI action
@@ -102,12 +103,12 @@ production-facing config, and adapter response safety.
 - Added validation for non-string optional config fields and boolean or
   non-numeric limit settings before app startup.
 - Added malformed `Cookie` header handling that returns `400 Bad Request`.
-- Added malformed bracketed `Host` header validation before route auth runs.
+- Added malformed bracketed `Host` header validation before surface auth runs.
 - Added response value validation before adapters write HTTP responses, so bad
   response bodies, status codes, and stream chunks fail safely.
 - Changed ASGI request body reads to reject client disconnects instead of
   passing partial request bodies to handlers.
-- Changed route auth to run even when a request already has an auth context.
+- Changed surface auth to run even when a request already has an auth context.
 - Changed request body reads to cache read and size-limit failures instead of
   invoking the body reader again.
 - Changed shutdown hook failures to mark lifespan as failed instead of started.

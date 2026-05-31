@@ -33,7 +33,10 @@ def test_cli_actions_without_a_cli_auth_are_allowed_but_warned(
         app.compile_routes()
 
     assert app._compiled_action_registry().get("mark_paid") is not None
-    assert any("'cli' surface" in record.message for record in caplog.records)
+    assert any(
+        "'cli' surface" in record.message and "mark_paid" in record.message
+        for record in caplog.records
+    )
 
 
 def test_cli_actions_must_define_a_description() -> None:

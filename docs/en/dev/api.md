@@ -88,7 +88,8 @@ Important constructor options:
 - `max_form_parts`, `max_file_size`, and response-size options: request and
   tool/action limits. These can also come from deployment environment variables.
 - `auth`: list of per-surface `AuthConfig` objects; one runs per request, by source. A
-  surface with no covering `AuthConfig` leaves its routes open (logged at startup).
+  surface with no covering `AuthConfig` is public; uncovered `mcp` and `cli`
+  exposure is logged at startup with route names.
 - `action_approval`: required when any exposed route has `needs_approval=True`.
 - `access_logger`: receives structured access events.
 
@@ -218,7 +219,7 @@ async def import_document(
 
 Use middleware when you need cross-cutting behavior around routes.
 
-`before` runs before route auth and binding. It can return a response to
+`before` runs after surface auth and before handler binding. It can return a response to
 short-circuit:
 
 ```python

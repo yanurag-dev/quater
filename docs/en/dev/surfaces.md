@@ -23,8 +23,9 @@ MCP and CLI are opt-in:
 - `tool=True` exposes the route as an MCP tool for MCP Clients.
 - `cli=True` exposes the route as a CLI action for AI agents.
 
-The surfaces do not share transport auth. They converge after the surface is
-accepted and Quater resolves the call to the route.
+The surfaces do not share transport auth. A surface is public unless an
+`AuthConfig` covers it; once covered, every route exposed on that surface is
+private unless the route opts out with `public`.
 
 ```mermaid
 flowchart TB
@@ -32,8 +33,8 @@ flowchart TB
     http["HTTP API\nnormal request"]
     mcp["MCP tool\nagent call"]
     cli["CLI action\nlocal or remote"]
-    surface_auth["per-surface AuthConfig\none authenticator, by source"]
-    route["route\nmetadata and route auth"]
+    surface_auth["optional per-surface AuthConfig\none authenticator, by source"]
+    route["route\nmetadata and public opt-out"]
     handler["handler\nyour code"]
 
     caller --> http --> route
@@ -54,7 +55,7 @@ async def authenticate(ctx: Request) -> AuthContext | None:
     return AuthContext(subject="cust_123")
 
 
-app = Quater(auth=[AuthConfig(authenticate, surfaces=["mcp", "cli"])])
+app = Quater(auth=[AuthConfig(authenticate, surfaces=["api", "mcp", "cli"])])
 
 
 @app.get(
@@ -117,11 +118,11 @@ against a hosted app.
 
 ## What Can Go Wrong
 
-`No AuthConfig covers the 'mcp' surface; its routes are unauthenticated` (startup warning)
-: An MCP tool has no `AuthConfig` covering `mcp`, so it is callable unauthenticated. Cover it with `AuthConfig(fn, surfaces=["mcp"])`, or open it deliberately with `public=["mcp"]`.
+`No AuthConfig covers the 'mcp' surface; exposed routes are public: ...` (startup warning)
+: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so those tools are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
 
-`No AuthConfig covers the 'cli' surface; its routes are unauthenticated` (startup warning)
-: A CLI action has no `AuthConfig` covering `cli`, so it is callable unauthenticated. Cover it with `AuthConfig(fn, surfaces=["cli"])`, or open it deliberately with `public=["cli"]`.
+`No AuthConfig covers the 'cli' surface; exposed routes are public: ...` (startup warning)
+: At least one CLI action is exposed while the `cli` surface has no `AuthConfig`, so those actions are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["cli"])`, or keep it public deliberately.
 
 `needs_approval requires tool=True or cli=True`
 : Approval only applies to operations exposed outside normal HTTP.

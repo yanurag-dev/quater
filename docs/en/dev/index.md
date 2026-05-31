@@ -118,7 +118,7 @@ async def authenticate(ctx: Request) -> AuthContext | None:
     return AuthContext(subject="demo-user")
 
 
-app = Quater(auth=[AuthConfig(authenticate, surfaces=["mcp", "cli"])])
+app = Quater(auth=[AuthConfig(authenticate, surfaces=["api", "mcp", "cli"])])
 
 
 @app.get(
@@ -189,11 +189,11 @@ flowchart LR
 
 ## What Can Go Wrong
 
-`No AuthConfig covers the 'mcp' surface; its routes are unauthenticated` (startup warning)
-: An MCP tool has no `AuthConfig` covering `mcp`, so it is callable unauthenticated. Cover it with `AuthConfig(fn, surfaces=["mcp"])`, or open it deliberately with `public=["mcp"]`.
+`No AuthConfig covers the 'mcp' surface; exposed routes are public: ...` (startup warning)
+: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so those tools are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
 
-`No AuthConfig covers the 'cli' surface; its routes are unauthenticated` (startup warning)
-: A CLI action has no `AuthConfig` covering `cli`, so it is callable unauthenticated. Cover it with `AuthConfig(fn, surfaces=["cli"])`, or open it deliberately with `public=["cli"]`.
+`No AuthConfig covers the 'cli' surface; exposed routes are public: ...` (startup warning)
+: At least one CLI action is exposed while the `cli` surface has no `AuthConfig`, so those actions are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["cli"])`, or keep it public deliberately.
 
 `needs_approval requires tool=True or cli=True`
 : Use `needs_approval=True` only on routes exposed as MCP tools or CLI actions.

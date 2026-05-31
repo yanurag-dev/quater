@@ -17,7 +17,7 @@ features:
   - title: Know who called
     details: Every request carries its source, so your handler can tell whether it came from HTTP, MCP, local CLI, or remote CLI.
   - title: Agent access has gates
-    details: MCP auth, CLI auth, route auth, audits, and approvals stay separate, so direct access still follows your rules.
+    details: MCP auth, CLI auth, surface-wide opt-outs, audits, and approvals stay separate, so direct access still follows your rules.
   - title: Fast path by default
     details: Granian/RSGI, msgspec, and the native router keep the framework layer small.
 ---

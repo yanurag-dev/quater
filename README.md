@@ -39,9 +39,9 @@ without losing safety, structure, or ownership of the application logic.
 
 ## Highlights
 
-- One view serves HTTP, MCP, and CLI. You annotate the route once and all three entry points share the same logic, auth, and validation.
+- One view serves HTTP, MCP, and CLI. You annotate the route once and all three entry points share the same handler logic, while auth is configured per surface.
 - Exposing a view to AI agents takes a single flag. No extra service, no separate schema file, no adapter to maintain.
-- Security is on by default. Host checking, CORS, body limits, and request IDs run without you touching configuration.
+- Request safety is on by default. Host checking, CORS, body limits, and request IDs run without you touching configuration; authentication is enabled per surface with `AuthConfig`.
 - Every request carries source and entrypoint metadata, so audit logs always know weather a human or an AI agent used your backend and how it arrived.
 - It gives slightly better performance than FastAPI for real workloads, with no measurable overhead when database I/O dominates.
 - Its simple to use, with a small API surface and no extra configuration required.

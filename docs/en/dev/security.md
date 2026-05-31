@@ -70,16 +70,16 @@ Missing or rejected auth returns:
 Unauthorized
 ```
 
-Routes are protected by default on every surface they are exposed on, by the one
-`AuthConfig` that covers each surface. A route is reachable without auth only where you
-mark it `public` (`public=True` for every exposed surface, or `public=["mcp", ...]`
-for named ones).
+Auth is surface-wide when configured. If a surface has an `AuthConfig`, every
+route exposed on that surface is protected unless you mark it `public`
+(`public=True` for every exposed surface, or `public=["mcp", ...]` for named
+ones). If a surface has no `AuthConfig`, that surface is public.
 
 ::: warning A route is only as safe as its weakest surface
-A route exposed on several surfaces is gated by each surface's `AuthConfig`
-independently. Keep every exposed surface's authenticator strong, and reach for
-`public` deliberately — making an agent surface public is logged loudly at
-startup.
+A route exposed on several surfaces is gated by each configured surface's
+`AuthConfig` independently. Keep every exposed surface's authenticator strong,
+or leave the surface public deliberately — public agent surfaces are logged at
+startup with route names.
 :::
 
 ::: tip Reject before you open the pool

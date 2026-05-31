@@ -346,17 +346,17 @@ def test_a_surface_covered_twice_is_a_startup_error() -> None:
 
 @pytest.mark.parametrize(
     ("surface", "tool", "cli"),
-    [("api", False, False), ("mcp", True, False), ("cli", False, True)],
+    [("mcp", True, False), ("cli", False, True)],
 )
-def test_an_uncovered_surface_warns_but_is_allowed(
+def test_an_uncovered_agent_surface_warns_but_is_allowed(
     surface: str,
     tool: bool,
     cli: bool,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    # Every surface behaves the same: no AuthConfig means its routes are open, which
-    # is allowed but logged loudly — there is no mandatory-auth error, not even
-    # for tools and actions.
+    # Every surface behaves the same: no AuthConfig means its routes are public.
+    # Agent surfaces get a warning because accidental tool/action exposure is
+    # easy to miss.
     app = Quater()
 
     @app.get("/thing", tool=tool, cli=cli, description="A thing.")
@@ -366,7 +366,27 @@ def test_an_uncovered_surface_warns_but_is_allowed(
     with caplog.at_level(logging.WARNING, logger="quater"):
         app.compile_routes()
 
-    assert any(f"{surface!r} surface" in record.message for record in caplog.records)
+    assert any(
+        f"{surface!r} surface" in record.message and "thing" in record.message
+        for record in caplog.records
+    )
+
+
+def test_uncovered_http_only_routes_do_not_warn(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = Quater()
+
+    @app.get("/thing")
+    async def thing() -> dict[str, bool]:
+        return {"ok": True}
+
+    with caplog.at_level(logging.WARNING, logger="quater"):
+        app.compile_routes()
+
+    assert not any(
+        "No AuthConfig covers" in record.message for record in caplog.records
+    )
 
 
 def test_authenticator_resource_parameters_are_a_startup_error() -> None:

@@ -150,4 +150,7 @@ def test_tool_routes_without_an_mcp_auth_are_allowed_but_warned(
         app.compile_routes()
 
     assert app._compiled_tool_registry().get("get_item") is not None
-    assert any("'mcp' surface" in record.message for record in caplog.records)
+    assert any(
+        "'mcp' surface" in record.message and "get_item" in record.message
+        for record in caplog.records
+    )

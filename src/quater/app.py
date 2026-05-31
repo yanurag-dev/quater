@@ -1183,9 +1183,8 @@ class Quater:
         """Run the one authenticator that covers ``surface``, unless opted out.
 
         Skips when the route is public on this surface, or when no ``AuthConfig``
-        covers it (for ``api`` that means an unauthenticated route, logged at
-        startup; ``mcp``/``cli`` can only be uncovered when every exposed route
-        is public on them).
+        covers it. An uncovered surface is intentionally public; agent surfaces
+        are logged at startup so that exposure is visible.
         """
 
         if surface in public:
@@ -1235,8 +1234,9 @@ class Quater:
         """Warn loudly when an exposed surface has no authenticator.
 
         Every surface behaves the same: if no ``AuthConfig`` covers it, its routes are
-        unauthenticated. That is allowed — the developer chooses what to protect
-        and where — but it is logged loudly, on agent surfaces as well as HTTP.
+        public. That is allowed — the developer chooses what to protect and where.
+        Uncovered agent surfaces are logged loudly because they are easy to expose
+        accidentally.
         Routes a developer explicitly opens with ``public`` on an agent surface
         are also called out.
         """
@@ -1244,10 +1244,10 @@ class Quater:
         for auth in dict.fromkeys(self._auth_by_surface.values()):
             validate_auth(auth)
 
-        protected: dict[RequestSource, bool] = {
-            "api": False,
-            "mcp": False,
-            "cli": False,
+        protected_routes: dict[RequestSource, list[str]] = {
+            "api": [],
+            "mcp": [],
+            "cli": [],
         }
         public_routes: dict[RequestSource, list[str]] = {
             "api": [],
@@ -1259,17 +1259,18 @@ class Quater:
                 if surface in route.public:
                     public_routes[surface].append(route.name)
                 else:
-                    protected[surface] = True
+                    protected_routes[surface].append(route.name)
 
-        all_surfaces: tuple[RequestSource, ...] = ("api", "mcp", "cli")
-        for surface in all_surfaces:
-            if protected[surface] and surface not in self._auth_by_surface:
+        agent_surfaces: tuple[RequestSource, ...] = ("mcp", "cli")
+        for surface in agent_surfaces:
+            names = protected_routes[surface]
+            if names and surface not in self._auth_by_surface:
                 logger.warning(
                     "No AuthConfig covers the %r surface; "
-                    "its routes are unauthenticated.",
+                    "exposed routes are public: %s",
                     surface,
+                    ", ".join(sorted(names)),
                 )
-        agent_surfaces: tuple[RequestSource, ...] = ("mcp", "cli")
         for surface in agent_surfaces:
             names = public_routes[surface]
             if names:

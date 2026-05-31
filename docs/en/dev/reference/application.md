@@ -68,7 +68,7 @@ Quater(
 | `content_security_policy` | `str \| None` | `None` | Adds `Content-Security-Policy` in strict and relaxed modes. |
 | `mcp_docs_path` | `str \| None` | `"/mcp/docs"` | Human MCP docs path. `None` disables the page. |
 | `mcp_allowed_origins` | `Iterable[str] \| None` | `None` | Browser origins allowed for MCP requests. |
-| `auth` | `Iterable[`[`AuthConfig`](./auth#symbol-authconfig)`] \| None` | `None` | Per-surface authenticators. Exactly one runs per request, chosen by source. A surface with no covering `AuthConfig` leaves its routes open (logged at startup). A surface may be covered by at most one `AuthConfig`. |
+| `auth` | `Iterable[`[`AuthConfig`](./auth#symbol-authconfig)`] \| None` | `None` | Per-surface authenticators. Exactly one runs per request, chosen by source. A surface with no covering `AuthConfig` is public; uncovered `mcp` and `cli` exposure is logged at startup with route names. A surface may be covered by at most one `AuthConfig`. |
 | `mcp_audit` | `AuditHook \| None` | `None` | Receives redacted MCP tool-call audit events. |
 | `action_approval` | [`ActionApproval`](./auth#symbol-actionapproval) \| None | `None` | Required when any tool/action uses `needs_approval=True`. |
 | `access_logger` | [`AccessLogHook`](./observability#symbol-accessloghook) \| None | `None` | Receives structured access events. |
@@ -162,7 +162,8 @@ Raises:
 
 - `ImproperlyConfigured` for invalid config, a surface covered by more than one
   `AuthConfig`, missing `action_approval`, docs path conflicts, or reserved paths. An
-  exposed surface with no covering `AuthConfig` is logged at startup, not raised.
+  exposed `mcp` or `cli` surface with no covering `AuthConfig` is logged at
+  startup, not raised.
 - `MiddlewareStateError` when you register middleware after routes compile.
 - `TypeError` when `include()` receives a non-`RouteGroup`.
 

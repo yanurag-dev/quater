@@ -75,7 +75,7 @@ sequenceDiagram
     Framework->>Handler: run handler, sharing the auth session
 ```
 
-## Protected By Default, `public` To Opt Out
+## Surface Auth, `public` To Opt Out
 
 Once a surface has an `AuthConfig`, every route on that surface is protected. Opt a
 route out with `public`:
@@ -96,9 +96,10 @@ async def status() -> dict[str, bool]:            # open to agents, protected on
 ```
 
 `public` is the developer's explicit choice and works the same on every surface.
-You decide what to protect and where: a surface with no `AuthConfig` leaves its routes
-open (logged loudly at startup), and a route left public on an agent surface is
-called out too — Quater warns, it does not guess.
+You decide what to protect and where: a surface with no `AuthConfig` is public.
+If that public surface is `mcp` or `cli`, Quater logs the exposed route names at
+startup. A route left public on an agent surface is called out too — Quater
+warns, it does not guess.
 
 ## Reading The Loaded User: `payload`
 
@@ -180,11 +181,11 @@ async def update_order_status(order_id: str, status: str) -> dict[str, str]:
 : The authenticator returned `None` (or raised). Check the token and header name.
 
 A surface's routes are unexpectedly open
-: No `AuthConfig` covers that surface, so its routes are unauthenticated. Every surface
+: No `AuthConfig` covers that surface, so its exposed routes are public. Every surface
   behaves the same here — `tool=True`/`cli=True` routes are not special — so this
-  is allowed, but logged loudly at startup
-  (`No AuthConfig covers the 'mcp' surface; its routes are unauthenticated.`). Cover it
-  with `AuthConfig(fn, surfaces=[...])`, or open only specific routes with `public=`.
+  is allowed. If the surface is `mcp` or `cli`, Quater logs it loudly at startup
+  (`No AuthConfig covers the 'mcp' surface; exposed routes are public: ...`). Cover
+  it with `AuthConfig(fn, surfaces=[...])`, or keep that surface public deliberately.
 
 MCP worked during `initialize` but failed later
 : Send the token on every MCP request. `initialize` does not create a session.
@@ -207,7 +208,7 @@ async def get_order(id: str): ...
 # after
 app = Quater(auth=[AuthConfig(authenticate, surfaces=["api", "mcp", "cli"])])
 
-@app.get("/orders/{id}", tool=True, cli=True)     # protected by default
+@app.get("/orders/{id}", tool=True, cli=True)     # protected on configured surfaces
 async def get_order(id: str): ...
 ```
 

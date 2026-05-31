@@ -17,7 +17,7 @@ the public `Request` and `Response` objects.
 
 Quater has three route middleware shapes:
 
-- `before`: runs before route auth and binding.
+- `before`: runs after surface auth and before handler binding.
 - `after`: runs after the handler returns a response.
 - `around`: wraps the handler pipeline.
 

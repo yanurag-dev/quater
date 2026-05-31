@@ -280,8 +280,8 @@ silently hide audit failures.
 
 ## What Can Go Wrong
 
-`No AuthConfig covers the 'mcp' surface; its routes are unauthenticated` (startup warning)
-: An MCP tool has no `AuthConfig` covering `mcp`, so it is callable unauthenticated. Cover it with `AuthConfig(fn, surfaces=["mcp"])`, or open it deliberately with `public=["mcp"]`.
+`No AuthConfig covers the 'mcp' surface; exposed routes are public: ...` (startup warning)
+: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so those tools are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
 
 `Invalid MCP Origin`
 : Add the browser origin to `mcp_allowed_origins`.
