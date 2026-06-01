@@ -50,6 +50,9 @@ Read [Stability](/en/dev/stability) before depending on the pre-release API.
   inputs, defaults, optional values, validation failures, handler errors, and
   the documented unknown-extra argument policy.
   ([#68](https://github.com/DevilsAutumn/quater/issues/68))
+- Added contributor documentation, GitHub issue and PR templates, and a
+  required pre-commit setup so new contributors can follow the same basic
+  checks used by CI.
 
 ### Changed
 

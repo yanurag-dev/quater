@@ -67,7 +67,8 @@ The docs are split by how a developer learns the framework:
   [Testing](/en/dev/testing), [Deployment](/en/dev/deployment), and
   [Security](/en/dev/security).
 - [Reference](/en/dev/reference/) gives exact signatures and defaults.
-- Project notes cover [stability](/en/dev/stability),
+- Project notes cover [contributing](/en/dev/contributing),
+  [stability](/en/dev/stability),
   [release notes](/en/dev/changelog), and
   [known limitations](/en/dev/known-limitations).
 
@@ -212,5 +213,7 @@ MCP streaming, and OpenAPI depth.
 - [Quickstart](/en/dev/quickstart): build the first working app.
 - [Why Quater Exists](/en/dev/why-quater): understand the problem Quater is
   built around.
+- [Contributing](/en/dev/contributing): learn how to pick issues, run checks,
+  and open pull requests.
 - [Security](/en/dev/security): understand the auth boundaries shown above.
 - [Reference](/en/dev/reference/): check exact signatures and defaults.

@@ -257,6 +257,11 @@ but names and defaults can still change before the first stable release.
   Quater is built around.
 - [Manual](docs/en/dev/index.md): read the full guide and reference.
 
+## Contributing
+
+Quater is meant to be a community-driven project. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) before you start contributing.
+
 ## Agent Skills
 
 Quater ships two agent skills:

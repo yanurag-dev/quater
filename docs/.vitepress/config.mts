@@ -128,6 +128,7 @@ function sidebarFor(version: DocsVersion): DefaultTheme.SidebarItem[] {
     {
       text: "Project",
       items: [
+        { text: "Contributing", link: `${version.base}contributing` },
         { text: "Stability", link: `${version.base}stability` },
         { text: "Changelog / Release Notes", link: `${version.base}changelog` },
         { text: "Known Limitations", link: `${version.base}known-limitations` },
