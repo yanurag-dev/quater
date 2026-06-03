@@ -177,6 +177,14 @@ quater actions describe store get_order
 quater call store get_order --order-id ord_1001
 ```
 
+## Production demo
+
+If you want to see how an app built on Quater behaves in production, check out
+[DevilsAutumn/frustrated](https://github.com/DevilsAutumn/frustrated). It is a
+demo Quater app that users can operate through their AI agents and MCP clients,
+along with normal HTTP routes. Its not 100% production-ready, but it serves as a
+good example of how Quater can be used in a real-world app.
+
 ## Data flow diagram
 
 ```mermaid
