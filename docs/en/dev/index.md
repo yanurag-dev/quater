@@ -191,7 +191,7 @@ flowchart LR
 ## What Can Go Wrong
 
 `No AuthConfig covers the 'mcp' surface; exposed routes are public: ...` (startup warning)
-: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so those tools are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
+: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so `/mcp`, `/mcp/docs`, `initialize`, `tools/list`, and `tools/call` are available without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
 
 `No AuthConfig covers the 'cli' surface; exposed routes are public: ...` (startup warning)
 : At least one CLI action is exposed while the `cli` surface has no `AuthConfig`, so those actions are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["cli"])`, or keep it public deliberately.

@@ -71,6 +71,14 @@ MCP auth and authorization have separate jobs:
 - The `mcp` `AuthConfig` protects `initialize`, `tools/list`, `tools/call`, and `/mcp/docs`.
 - Handler or service authorization decides whether the authenticated caller may run the selected operation.
 
+::: warning No MCP AuthConfig means public MCP
+If no `AuthConfig` covers `"mcp"`, Quater does not challenge MCP requests. The
+MCP surface is public, including `/mcp`, `/mcp/docs`, `initialize`, `tools/list`,
+and `tools/call`. `tools/list` reveals every route exposed with `tool=True`, and
+`tools/call` can run those tools. Quater logs the exposed tool names at startup
+so the public surface is visible.
+:::
+
 Quater checks MCP auth on each HTTP request. It does not authenticate once during
 `initialize` and then reuse that result for later tool calls.
 
@@ -108,7 +116,8 @@ For a hosted app at `https://api.example.com`, configure the MCP URL as:
 https://api.example.com/mcp
 ```
 
-Bearer auth must go on every HTTP request, not only on `initialize`:
+When the MCP surface is protected, bearer auth must go on every HTTP request,
+not only on `initialize`:
 
 ```json
 {
@@ -124,7 +133,8 @@ Bearer auth must go on every HTTP request, not only on `initialize`:
 ```
 
 `initialize` is not a login. Quater does not create a server-side session from
-it. If the token expires, the next request fails with `401 Unauthorized`.
+it. If the protected surface's token expires, the next request fails with
+`401 Unauthorized`.
 
 ::: tip Keep authorization close to the data
 The `mcp` `AuthConfig` decides whether the caller may use the MCP surface.
@@ -288,7 +298,7 @@ silently hide audit failures.
 ## What Can Go Wrong
 
 `No AuthConfig covers the 'mcp' surface; exposed routes are public: ...` (startup warning)
-: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so those tools are callable without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
+: At least one MCP tool is exposed while the `mcp` surface has no `AuthConfig`, so `/mcp`, `/mcp/docs`, `initialize`, `tools/list`, and `tools/call` are available without authentication. Cover the surface with `AuthConfig(fn, surfaces=["mcp"])`, or keep it public deliberately.
 
 `Invalid MCP Origin`
 : Add the browser origin to `mcp_allowed_origins`.

@@ -147,12 +147,15 @@ ownership) stays in your handler or service, where it has the data.
 ## What Runs When
 
 For every request, the framework sets `source` from the entry path, then runs
-the one `AuthConfig` for that surface (unless the matched route is public there). MCP
-and remote CLI read just the routing bits — the tool or action name, bounded by
-the body-size limit, with no argument binding — before auth, so the
-authenticator sees `request.context.action_name`/`tool_name`, and remote CLI
-reaches parity with MCP. Discovery (`tools/list`, the action manifest) is
-protected by the same surface `AuthConfig`.
+the one `AuthConfig` for that surface. Calls that target a route, such as
+`tools/call` and remote CLI action calls, can skip that authenticator only when
+the matched route is public on that surface. MCP and remote CLI read just the
+routing bits — the tool or action name, bounded by the body-size limit, with no
+argument binding — before auth, so the authenticator sees
+`request.context.action_name`/`tool_name`, and remote CLI reaches parity with
+MCP. Discovery (`tools/list`, the action manifest) is protected by the same
+surface `AuthConfig`; if no `AuthConfig` covers that surface, discovery is public
+too.
 
 MCP `initialize` is not a login. Quater does not create an MCP session from it;
 every later `tools/list` and `tools/call` must carry valid auth again.
@@ -183,9 +186,12 @@ async def update_order_status(order_id: str, status: str) -> dict[str, str]:
 A surface's routes are unexpectedly open
 : No `AuthConfig` covers that surface, so its exposed routes are public. Every surface
   behaves the same here — `tool=True`/`cli=True` routes are not special — so this
-  is allowed. If the surface is `mcp` or `cli`, Quater logs it loudly at startup
-  (`No AuthConfig covers the 'mcp' surface; exposed routes are public: ...`). Cover
-  it with `AuthConfig(fn, surfaces=[...])`, or keep that surface public deliberately.
+  is allowed. If the surface is `mcp`, `/mcp`, `/mcp/docs`, `initialize`,
+  `tools/list`, and `tools/call` are available without authentication. If the
+  surface is `cli`, action discovery and action calls are available without
+  authentication. Quater logs it loudly at startup (`No AuthConfig covers the 'mcp'
+  surface; exposed routes are public: ...`). Cover it with
+  `AuthConfig(fn, surfaces=[...])`, or keep that surface public deliberately.
 
 MCP worked during `initialize` but failed later
 : Send the token on every MCP request. `initialize` does not create a session.

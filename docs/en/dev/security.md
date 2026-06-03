@@ -102,6 +102,10 @@ The `mcp` `AuthConfig` protects:
 - `tools/list`
 - `tools/call`
 
+If no `AuthConfig` covers `"mcp"`, those MCP endpoints and methods are public
+instead. `tools/list` will disclose every exposed `tool=True` route, and
+`tools/call` can run them.
+
 The `cli` `AuthConfig` protects:
 
 - local action discovery
