@@ -279,6 +279,35 @@ session_id = request.cookies.get("session")
 | `tool_name` | `str \| None` | MCP tool name for tool calls. |
 | `action_name` | `str \| None` | CLI action name for action calls. MCP tool calls also set it to the tool name. |
 
+## Request Object In MCP And CLI Handlers
+
+For MCP tool calls and CLI action calls, Quater builds a synthetic `Request`
+from the action or tool arguments before calling the handler. This is true
+whether the handler reads parameters via `Header()`, `Cookie()`, and `Body()`
+markers, or injects `Request` directly and reads `request.headers`,
+`request.cookies`, or `await request.body()`.
+
+In both cases the handler sees the synthetic request. The outer transport
+headers, such as `Authorization`, `Cookie`, `Content-Length`,
+`Mcp-Protocol-Version`, and request ids, stay on the transport side and are not
+visible in the handler request.
+
+Use `request.auth` for the authenticated caller and `request.context` for
+surface and action metadata:
+
+```python
+@app.get("/orders/{order_id}", tool=True, cli=True, description="Fetch one order.")
+async def get_order(order_id: str, request: Request) -> dict[str, object]:
+    if request.auth is None:
+        raise HTTPError(status_code=401, detail="Authentication required.")
+    return {
+        "order_id": order_id,
+        "subject": request.auth.subject,    # authenticated caller
+        "source": request.context.source,   # "mcp" or "cli"
+        "action": request.context.action_name,
+    }
+```
+
 ## What Can Go Wrong
 
 `Payload Too Large`

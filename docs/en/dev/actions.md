@@ -162,11 +162,17 @@ auth request from the CLI auth headers. In both modes, the handler receives the
 `AuthContext` produced by the `cli` surface authenticator.
 
 When Quater calls the route handler, it builds a synthetic request from the
-action arguments. Handler-level `Header()` and `Cookie()` parameters only see
-values passed as action arguments. The outer CLI transport headers, such as
-`Authorization`, `Cookie`, `Content-Length`, and request ids, are used for the
-CLI surface and are not copied into the handler request. Use `request.auth` for
-the authenticated caller.
+action arguments. This applies regardless of how the handler reads the request:
+
+- `Header()` and `Cookie()` parameters only see values passed as action arguments.
+- If the handler injects `Request` directly and reads `request.headers`,
+  `request.cookies`, or `await request.body()`, it still sees the synthetic
+  request — not the outer CLI transport request.
+
+The outer CLI transport headers, such as `Authorization`, `Cookie`,
+`Content-Length`, and request ids, are used for the CLI surface and are not
+copied into the handler request. Use `request.auth` for the authenticated caller
+and `request.context` for source and action metadata.
 
 ::: warning CLI auth is not authorization
 The `cli` `AuthConfig` answers "may this caller use the action surface?" Authorization

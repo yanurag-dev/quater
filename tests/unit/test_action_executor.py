@@ -284,6 +284,78 @@ async def test_action_requests_do_not_inherit_transport_headers_or_cookies() -> 
 
 
 @pytest.mark.asyncio
+async def test_direct_request_reads_see_synthetic_not_transport_values() -> None:
+    """Handler injecting Request directly reads the synthetic request, not transport."""
+    app = Quater(auth=[AuthConfig(allow_auth, surfaces=["cli"])])
+
+    @app.get("/audit", cli=True, description="Read audit state.")
+    async def audit(request: Request) -> dict[str, object]:
+        return {
+            "authorization": request.headers.get("authorization"),
+            "session_id": request.cookies.get("session"),
+            "body": await request.body(),
+            "source": request.context.source,
+        }
+
+    response = await execute_action(
+        action_for(app, "audit"),
+        Request(
+            method="POST",
+            path="/__quater__/actions/call",
+            headers={
+                "authorization": "Bearer surface-token",
+                "cookie": "session=outer-cookie",
+            },
+            body=b'{"outer":"payload"}',
+        ),
+        {},
+        source="cli",
+    )
+
+    assert (
+        response.body
+        == b'{"authorization":null,"session_id":null,"body":"","source":"cli"}'
+    )
+
+
+@pytest.mark.asyncio
+async def test_direct_request_reads_see_synthetic_not_transport_values_mcp() -> None:
+    """MCP handler injecting Request directly reads synthetic request, not transport."""
+    app = Quater(auth=[AuthConfig(allow_auth, surfaces=["mcp"])])
+
+    @app.get("/audit", tool=True, description="Read audit state.")
+    async def audit(request: Request) -> dict[str, object]:
+        return {
+            "authorization": request.headers.get("authorization"),
+            "mcp_protocol_version": request.headers.get("mcp-protocol-version"),
+            "session_id": request.cookies.get("session"),
+            "body": await request.body(),
+            "source": request.context.source,
+        }
+
+    response = await execute_action(
+        action_for(app, "audit"),
+        Request(
+            method="POST",
+            path="/__quater__/mcp",
+            headers={
+                "authorization": "Bearer mcp-surface-token",
+                "mcp-protocol-version": "2024-11-05",
+                "cookie": "session=outer-cookie",
+            },
+            body=b'{"outer":"payload"}',
+        ),
+        {},
+        source="mcp",
+    )
+
+    assert response.body == (
+        b'{"authorization":null,"mcp_protocol_version":null,'
+        b'"session_id":null,"body":"","source":"mcp"}'
+    )
+
+
+@pytest.mark.asyncio
 async def test_action_cookie_arguments_ignore_malformed_transport_cookie() -> None:
     app = Quater(auth=[AuthConfig(allow_auth, surfaces=["cli"])])
     handler_calls = 0

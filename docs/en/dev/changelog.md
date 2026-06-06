@@ -23,6 +23,13 @@ cut.
 
 ### Fixed
 
+- Clarified that injecting `Request` directly into an MCP tool or CLI action
+  handler yields the same synthetic request that `Header()`, `Cookie()`, and
+  `Body()` markers produce — transport headers, cookies, and body are never
+  visible to the handler. Updated `actions.md`, `mcp.md`, and the request
+  reference accordingly, and added test coverage for both the CLI and MCP
+  surfaces. ([#74](https://github.com/DevilsAutumn/quater/issues/74))
+
 - Fixed request `Cookie` header parsing so cookies named after Set-Cookie
   attributes (`path`, `domain`, `expires`, `max-age`, `secure`, `httponly`,
   `samesite`, `version`, `comment`) are read correctly. The header is now parsed
