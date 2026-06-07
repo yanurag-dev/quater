@@ -16,6 +16,8 @@
   </a>
 </p>
 
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/quater?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/quater)
+
 Most backend frameworks were designed for one main job: serve data to a
 frontend, then let humans click through that frontend to get work done.
 
