@@ -4,10 +4,18 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterable, Awaitable, Callable, Mapping
 from dataclasses import is_dataclass
-from typing import TypeAlias
+from email.utils import formatdate
+from typing import Literal, TypeAlias
 
-from quater.datastructures import HeaderItems, normalize_response_headers
+from quater.datastructures import (
+    _COOKIE_VALUE_CHARS,
+    _HEADER_NAME_CHARS,
+    HeaderItems,
+    normalize_response_headers,
+)
 from quater.exceptions import ResponseConversionError
+
+_VALID_SAMESITE = {"lax", "strict", "none"}
 
 ResponseBody: TypeAlias = bytes | bytearray | memoryview
 
@@ -43,6 +51,76 @@ class Response:
     @property
     def is_streaming(self) -> bool:
         return False
+
+    def set_cookie(
+        self,
+        key: str,
+        value: str = "",
+        *,
+        max_age: int | None = None,
+        expires: int | None = None,
+        path: str | None = "/",
+        domain: str | None = None,
+        secure: bool = False,
+        httponly: bool = False,
+        samesite: Literal["lax", "strict", "none"] | None = "lax",
+    ) -> None:
+        if not key or not _HEADER_NAME_CHARS.issuperset(key):
+            raise ValueError(f"Invalid cookie name: {key!r}")
+        if not _COOKIE_VALUE_CHARS.issuperset(value):
+            raise ValueError(f"Invalid cookie value: {value!r}")
+        if path is not None and ";" in path:
+            raise ValueError(f"Invalid cookie path: {path!r}")
+        if domain is not None and ";" in domain:
+            raise ValueError(f"Invalid cookie domain: {domain!r}")
+        cookie_value = f"{key}={value}"
+        if max_age is not None:
+            cookie_value += f"; Max-Age={max_age}"
+        if expires is not None:
+            cookie_value += f"; Expires={_format_http_date(expires)}"
+        if path is not None:
+            cookie_value += f"; Path={path}"
+        if domain is not None:
+            cookie_value += f"; Domain={domain}"
+        if secure:
+            cookie_value += "; Secure"
+        if httponly:
+            cookie_value += "; HttpOnly"
+        if samesite is not None:
+            normalized_samesite = samesite.lower()
+            if normalized_samesite not in _VALID_SAMESITE:
+                raise ValueError(
+                    f"Invalid SameSite value: {samesite!r}."
+                    " Must be one of: lax, strict, none"
+                )
+            if normalized_samesite == "none" and not secure:
+                raise ValueError(
+                    'SameSite="none" requires the Secure attribute to be set'
+                )
+            cookie_value += f"; SameSite={normalized_samesite.capitalize()}"
+        self.headers = (*self.headers, ("set-cookie", cookie_value))
+
+    def delete_cookie(
+        self,
+        key: str,
+        *,
+        path: str | None = "/",
+        domain: str | None = None,
+        secure: bool = False,
+        httponly: bool = False,
+        samesite: Literal["lax", "strict", "none"] | None = "lax",
+    ) -> None:
+        self.set_cookie(
+            key,
+            value="",
+            max_age=0,
+            expires=0,
+            path=path,
+            domain=domain,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite,
+        )
 
 
 class JSONResponse(Response):
@@ -244,6 +322,10 @@ def _is_json_response_value(value: object) -> bool:
     import msgspec
 
     return isinstance(value, msgspec.Struct)
+
+
+def _format_http_date(timestamp: int) -> str:
+    return formatdate(timestamp, usegmt=True)
 
 
 def _has_header(headers: tuple[tuple[str, str], ...], key: str) -> bool:

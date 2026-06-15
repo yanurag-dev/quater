@@ -16,6 +16,12 @@ Read [Stability](/en/dev/stability) before upgrading Quater versions.
 Unreleased changes on `main`. Renamed to the version number when the release is
 cut.
 
+### Added
+
+- `Response.set_cookie()` and `Response.delete_cookie()` helpers for building
+  `Set-Cookie` headers without manual string formatting.
+  ([#111](https://github.com/DevilsAutumn/quater/issues/111))
+
 ### Changed
 
 - Updated the documentation build dependencies to patched versions of Vite,

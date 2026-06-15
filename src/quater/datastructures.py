@@ -21,6 +21,12 @@ _HEADER_NAME_CHARS = frozenset(f"!#$%&'*+-.^_`|~{digits}{ascii_letters}")
 # parser both accept. Pairs whose name has any other character are skipped.
 _COOKIE_NAME_CHARS = _HEADER_NAME_CHARS | {":"}
 
+# RFC 6265 §4.1.1 cookie-octet: US-ASCII visible chars excluding DQUOTE,
+# comma, semicolon, and backslash. Used to validate outgoing Set-Cookie values.
+_COOKIE_VALUE_CHARS = frozenset(
+    chr(c) for c in range(0x21, 0x7F) if chr(c) not in {'"', ",", ";", "\\"}
+)
+
 
 class Headers(Mapping[str, str]):
     """Case-insensitive HTTP header mapping."""
