@@ -563,6 +563,36 @@ RESPONSE_OPTIONS: Mapping[str, tuple[tuple[str, str, str], ...]] = {
     ),
 }
 
+SET_COOKIE_OPTIONS: tuple[tuple[str, str, str], ...] = (
+    ("key", "str", "Cookie name. Must be a valid RFC 6265 token."),
+    ("value", "str", "Cookie value. Must be a valid RFC 6265 cookie-octet string."),
+    ("max_age", "int | None", "Max age in seconds."),
+    ("expires", "int | None", "Expiry as a Unix timestamp."),
+    ("path", "str | None", "Cookie path. Defaults to `/`."),
+    ("domain", "str | None", "Cookie domain."),
+    ("secure", "bool", "Set the `Secure` flag."),
+    ("httponly", "bool", "Set the `HttpOnly` flag."),
+    (
+        "samesite",
+        "Literal['lax', 'strict', 'none'] | None",
+        'SameSite policy. `"none"` requires `secure=True`. Defaults to `"lax"`.',
+    ),
+)
+
+DELETE_COOKIE_OPTIONS: tuple[tuple[str, str, str], ...] = (
+    ("key", "str", "Cookie name to delete."),
+    ("path", "str | None", "Must match the path used when the cookie was set."),
+    ("domain", "str | None", "Must match the domain used when the cookie was set."),
+    ("secure", "bool", "Required for `__Secure-` and `__Host-` prefixed cookies."),
+    ("httponly", "bool", "Set the `HttpOnly` flag."),
+    (
+        "samesite",
+        "Literal['lax', 'strict', 'none'] | None",
+        "Required when the deletion response is sent cross-site."
+        ' `"none"` requires `secure=True`.',
+    ),
+)
+
 HTTP_ERROR_OPTIONS: tuple[tuple[str, str, str], ...] = (
     ("detail", "str | None", "Error message returned to the client."),
     ("status_code", "int | None", "HTTP status code for the error response."),
@@ -1479,6 +1509,44 @@ def render_responses(package: Any) -> str:
                 RESPONSE_OPTIONS[symbol],
             )
         )
+    lines.extend(
+        [
+            "## Cookie helpers",
+            "",
+            "Both helpers are available on every response class.",
+            "",
+            "### `set_cookie`",
+            "",
+        ]
+    )
+    lines.extend(signature_block(method_signature(package, "Response", "set_cookie")))
+    lines.extend(
+        validated_option_table(
+            package,
+            "Response",
+            "set_cookie",
+            "Parameters",
+            SET_COOKIE_OPTIONS,
+        )
+    )
+    lines.extend(
+        [
+            "### `delete_cookie`",
+            "",
+        ]
+    )
+    lines.extend(
+        signature_block(method_signature(package, "Response", "delete_cookie"))
+    )
+    lines.extend(
+        validated_option_table(
+            package,
+            "Response",
+            "delete_cookie",
+            "Parameters",
+            DELETE_COOKIE_OPTIONS,
+        )
+    )
     lines.extend(
         type_section(
             (

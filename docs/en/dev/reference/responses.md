@@ -124,6 +124,62 @@ Default `307` preserves the HTTP method.
 EmptyResponse(*, status_code: int = 204, headers: HeaderItems | Mapping[str, str] | None = None)
 ```
 
+## Cookie helpers {#symbol-set-cookie}
+
+Both helpers are available on every response class.
+
+### `set_cookie`
+
+```python
+response.set_cookie(
+    key: str,
+    value: str = "",
+    *,
+    max_age: int | None = None,
+    expires: int | None = None,
+    path: str | None = "/",
+    domain: str | None = None,
+    secure: bool = False,
+    httponly: bool = False,
+    samesite: Literal["lax", "strict", "none"] | None = "lax",
+) -> None
+```
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `str` | — | Cookie name. Must be a valid RFC 6265 token. |
+| `value` | `str` | `""` | Cookie value. Must be a valid RFC 6265 cookie-octet string. |
+| `max_age` | `int \| None` | `None` | Max age in seconds. |
+| `expires` | `int \| None` | `None` | Expiry as a Unix timestamp. |
+| `path` | `str \| None` | `"/"` | Cookie path. |
+| `domain` | `str \| None` | `None` | Cookie domain. |
+| `secure` | `bool` | `False` | Set the `Secure` flag. |
+| `httponly` | `bool` | `False` | Set the `HttpOnly` flag. |
+| `samesite` | `Literal["lax", "strict", "none"] \| None` | `"lax"` | SameSite policy. `"none"` requires `secure=True`. |
+
+### `delete_cookie`
+
+```python
+response.delete_cookie(
+    key: str,
+    *,
+    path: str | None = "/",
+    domain: str | None = None,
+    secure: bool = False,
+    httponly: bool = False,
+    samesite: Literal["lax", "strict", "none"] | None = "lax",
+) -> None
+```
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `str` | — | Cookie name to delete. |
+| `path` | `str \| None` | `"/"` | Must match the path used when the cookie was set. |
+| `domain` | `str \| None` | `None` | Must match the domain used when the cookie was set. |
+| `secure` | `bool` | `False` | Required for `__Secure-` and `__Host-` prefixed cookies. |
+| `httponly` | `bool` | `False` | Set the `HttpOnly` flag. |
+| `samesite` | `Literal["lax", "strict", "none"] \| None` | `"lax"` | Required when the deletion response is sent cross-site. `"none"` requires `secure=True`. |
+
 ## Complete Example
 
 ```python
